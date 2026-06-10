@@ -1,0 +1,22 @@
+name: asc-api-key
+description: Write App Store Connect API key JSON for Fastlane (single rotation point — replaces 4 copy-pasted blocks)
+inputs:
+  key-id: { required: true }
+  issuer-id: { required: true }
+  key-content: { required: true, description: 'Base64-encoded .p8 key content' }
+  output-path: { default: 'fastlane/api_key.json' }
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      run: |
+        mkdir -p "$(dirname '${{ inputs.output-path }}')"
+        cat > '${{ inputs.output-path }}' <<JSON
+        {
+          "key_id": "${{ inputs.key-id }}",
+          "issuer_id": "${{ inputs.issuer-id }}",
+          "key": "${{ inputs.key-content }}",
+          "is_key_content_base64": true,
+          "in_house": false
+        }
+        JSON
