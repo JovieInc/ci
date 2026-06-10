@@ -1,1 +1,21 @@
-# placeholder — full content lands with scaffold push
+# Shared diff-aware risk rules consumed by rw-gate-risk.
+# Highest matching tier wins. Replaces Jovie's 13-flag shell job and LYB's dorny/paths-filter.
+tiers:
+  low:    # fast gate only
+    - 'docs/**'
+    - '**/*.md'
+    - 'screenshots/**'
+    - '**/__tests__/**'
+  standard:  # + unit + build (default for unmatched paths)
+    - 'apps/**'
+    - 'packages/**'
+  high:   # + E2E smoke + preview/Lighthouse (web) or full iOS lane; human-or-senior-agent review label
+    - '**/auth/**'
+    - '**/clerk*/**'
+    - '**/revenuecat/**'
+    - '**/payments/**'
+    - '**/migrations/**'
+    - '**/db/schema/**'
+    - '**/connectors/token-vault/**'
+    - '.github/**'
+    - '**/api/public/**'
