@@ -1,0 +1,13 @@
+name: setup-ios-build
+description: Xcode + Ruby/Bundler setup for Fastlane iOS lanes (shared)
+inputs:
+  ruby-version: { default: '3.2' }
+  working-directory: { default: 'apps/ios' }
+runs:
+  using: composite
+  steps:
+    - uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '${{ inputs.ruby-version }}'
+        bundler-cache: true
+        working-directory: '${{ inputs.working-directory }}'
