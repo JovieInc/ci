@@ -1,0 +1,22 @@
+# Shared secret-scanning config for all Jovie repos.
+# Extends gitleaks defaults; adds coverage for gaps found in the JOV-2940 incident
+# (committed backup config files and base64-wrapped tokens slipped past per-repo configs).
+[extend]
+useDefault = true
+
+[[rules]]
+id = "neon-connection-string"
+description = "Neon Postgres connection string"
+regex = '''postgres(?:ql)?://[^\s'"]+\.neon\.tech[^\s'"]*'''
+
+[[rules]]
+id = "clerk-secret-key"
+description = "Clerk secret key"
+regex = '''sk_(?:test|live)_[A-Za-z0-9]{20,}'''
+
+[[rules]]
+id = "base64-basic-auth"
+description = "Base64-encoded basic auth credential assignment"
+regex = '''(?i)(?:authorization|basic_auth)[^\n]{0,40}=\s*['"][A-Za-z0-9+/]{40,}={0,2}['"]'''
+
+# NOTE: do NOT allowlist *.backup / *.example files — that was the JOV-2940 escape hatch.
