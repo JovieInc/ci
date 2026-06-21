@@ -1,0 +1,41 @@
+# Canonical Dependabot auto-merge — published in JovieInc/ci (workflow_call).
+# Consumer repos: thin wrapper that `uses:` this file @main.
+name: Dependabot Auto-Merge
+
+on:
+  workflow_call:
+
+permissions: {}
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Fetch Dependabot metadata
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Enqueue patch + minor (merge-queue label)
+        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          echo "Dependency: ${{ steps.meta.outputs.dependency-names }}"
+          echo "Update type: ${{ steps.meta.outputs.update-type }}"
+          gh pr edit --add-label "merge-queue" "$PR_URL" || true
+          gh pr edit --add-label "tim-approved" "$PR_URL" || true
+
+      - name: Note major bump requires manual review
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          echo "Major bump for ${{ steps.meta.outputs.dependency-names }} — manual review required"
+          gh pr comment "$PR_URL" --body "Major version bump detected. Auto-merge skipped — manual review required."
