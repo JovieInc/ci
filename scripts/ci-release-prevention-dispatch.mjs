@@ -12,7 +12,8 @@ const event = index === -1 ? process.env.GITHUB_EVENT_NAME : process.argv[index 
 const dryRun = process.argv.includes('--dry-run');
 
 if (!registry.events.includes(event)) throw new Error('event must be pull_request or merge_group');
-if (ledger.incidents.length !== 27 || new Set(ledger.incidents).size !== 27) throw new Error('canonical ledger must contain exactly 27 unique incident IDs');
+if (ledger.incidents.length !== 29 || new Set(ledger.incidents).size !== 29) throw new Error('canonical ledger must contain exactly 29 unique incident IDs');
+if (registry.required_incident_count !== ledger.incidents.length) throw new Error('fixture registry incident count does not match canonical ledger');
 if (registry.runner !== 'node' || !Number.isInteger(registry.timeout_seconds) || registry.timeout_seconds < 1 || registry.timeout_seconds > 5) throw new Error('registry runner or timeout is invalid');
 if (registry.fixture !== 'scripts/fixtures/ci-release-prevention-cases.mjs') throw new Error('registry fixture path is not canonical');
 

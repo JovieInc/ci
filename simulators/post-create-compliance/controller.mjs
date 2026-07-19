@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 
-export const RELEASE = Object.freeze({ contractId: 'ci-release/drain-019f75f7/v1', implementationSha: 'bc0b0676c058ffa1c8515e8c29fefd2317b160cc', incidentCount: 27, incidentSetSha256: 'd557bce0c0a727ccdf6608c2db719b5e7e5a41f0384353c1c4b54c2e17c34f5c', requiredCheck: 'ci-release-contract' });
+export const RELEASE = Object.freeze({ contractId: 'ci-release/drain-019f75f7/v1', implementationSha: 'bc0b0676c058ffa1c8515e8c29fefd2317b160cc', incidentCount: 29, incidentSetSha256: 'a0b190e4602194ec4d9f179187ef46bf84ce7b6e56bcaec9e5b294fb8ff190f1', requiredCheck: 'ci-release-contract' });
 const digest = value => createHash('sha256').update(value).digest('hex');
 
 export function generatedContract(release = RELEASE) {

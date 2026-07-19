@@ -14,6 +14,23 @@ if (id === 'pr-files-index-head-base-staleness' && negative) {
   assert.equal(actions.some(action => ['bypass', 'rerun', 'mutation'].includes(action)), false, 'stale PR index must not bypass, rerun, or mutate');
   throw new Error('stale PR files index rejected');
 }
+if (id === 'ci-release/prepush-exact-main-scope-selection' && negative) {
+  const targets = [
+    { kind: 'divergent', destination: 'origin/exact-main', upstream: 'origin/exact-main', signedSoleParent: true, mergeBase: 'wrong-base' },
+    { kind: 'unknown', destination: undefined, upstream: undefined, signedSoleParent: false, mergeBase: undefined },
+    { kind: 'force', destination: 'origin/exact-main', upstream: 'origin/exact-main', signedSoleParent: true, mergeBase: 'parent', force: true },
+  ];
+  for (const target of targets) {
+    const selection = target.destination === target.upstream && target.signedSoleParent && target.mergeBase === 'parent' && !target.force ? 'exact-diff' : 'full-verification';
+    assert.equal(selection, 'full-verification', `${target.kind} target must select full verification`);
+  }
+  throw new Error('unsafe pre-push exact-main scope rejected');
+}
+if (id === 'ci-release/prepush-toolchain-runtime-contract' && negative) {
+  const parent = { node: '26.5.0', pnpm: '9.15.4' };
+  assert.equal(parent.node.startsWith('22.23.1'), false, 'Node 26 parent shell must be rejected before tests');
+  throw new Error('unsupported parent shell runtime rejected before hook tests');
+}
 const checks = {
   'source-pr-queue-evidence': () => true,
   'duplicate-ci-retry-loop': () => new Set(['pr:1', 'merge-group:sha', 'main:sha']).size === 3,
@@ -47,6 +64,22 @@ const checks = {
     const exactRefs = { head: 'expected-head', base: 'expected-base' };
     const outcome = rest.head === exactRefs.head && rest.base === exactRefs.base && graph.head === exactRefs.head && graph.base === exactRefs.base ? 'indexed' : 'index_pending';
     return outcome === 'indexed' && !['bypass', 'rerun', 'mutation'].includes(outcome);
+  },
+  'ci-release/prepush-exact-main-scope-selection': () => {
+    const pushDestination = 'origin/exact-main';
+    const upstreamDefault = 'origin/exact-main';
+    const soleParent = { sha: 'parent', signed: true };
+    const mergeBase = 'parent';
+    const eventTree = 'event-tree';
+    const selection = pushDestination === upstreamDefault && soleParent.signed && mergeBase === soleParent.sha ? { mode: 'exact-diff', diff: `${soleParent.sha}..${eventTree}` } : { mode: 'full-verification' };
+    return selection.mode === 'exact-diff' && selection.diff === 'parent..event-tree';
+  },
+  'ci-release/prepush-toolchain-runtime-contract': () => {
+    const parent = { node: '22.23.1', pnpm: '9.15.4' };
+    const nestedHook = structuredClone(parent);
+    const subprocess = structuredClone(parent);
+    const receipt = { runtime: nestedHook.node, pnpm: nestedHook.pnpm, nested_subprocess: subprocess };
+    return parent.node === '22.23.1' && parent.pnpm === '9.15.4' && receipt.runtime === '22.23.1' && receipt.pnpm === '9.15.4' && receipt.nested_subprocess.node === '22.23.1' && receipt.nested_subprocess.pnpm === '9.15.4';
   },
 };
 assert.ok(checks[id], `unknown incident fixture: ${id}`);

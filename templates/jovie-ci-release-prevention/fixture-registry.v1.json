@@ -1,5 +1,6 @@
 {
   "schema_version": 1,
+  "required_incident_count": 29,
   "events": ["pull_request", "merge_group"],
   "runner": "node",
   "timeout_seconds": 5,
