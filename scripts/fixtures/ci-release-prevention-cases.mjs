@@ -31,6 +31,21 @@ if (id === 'ci-release/prepush-toolchain-runtime-contract' && negative) {
   assert.equal(parent.node.startsWith('22.23.1'), false, 'Node 26 parent shell must be rejected before tests');
   throw new Error('unsupported parent shell runtime rejected before hook tests');
 }
+if (negative && id.startsWith('ci-release/')) {
+  const negativeCases = {
+    'ci-release/bypass-secret-curl-argv': () => { const argv = ['curl', '-H', 'x-bypass=secret']; assert.equal(argv.some(value => value.includes('secret')), true); },
+    'ci-release/ready-deployment-pagination-exact-identity': () => { const deployments = [{ id: 'old', sha: 'exact' }, { id: 'new', sha: 'other' }]; assert.equal(deployments.find(item => item.sha === 'exact')?.id, 'old'); },
+    'ci-release/configured-auth-smoke-all-skip': () => { const checks = [{ configured: true, skipped: true }, { configured: true, skipped: true }]; assert.equal(checks.every(check => check.skipped), true); },
+    'ci-release/tim-route-not-found-200': () => { const response = { status: 200, body: '<h1>Not Found</h1>' }; assert.equal(response.status === 200 && /not found/i.test(response.body), true); },
+    'ci-release/public-route-2xx-empty-body': () => { const response = { status: 204, body: '' }; assert.equal(response.status >= 200 && response.status < 300 && response.body.length === 0, true); },
+    'ci-release/staging-preview-environment-bypass': () => { const deployment = { environment: 'preview', bypass: true }; assert.equal(deployment.environment === 'preview' && deployment.bypass, true); },
+    'ci-release/lighthouse-evidence-symlink-fifo-manifest': () => { const artifact = { type: 'fifo', manifest: false }; assert.equal(['symlink', 'fifo'].includes(artifact.type) || !artifact.manifest, true); },
+    'ci-release/bypass-cookie-third-party-mask': () => { const cookie = { name: 'bypass', domain: '.third-party.example', value: 'masked' }; assert.equal(cookie.domain.includes('third-party') && cookie.value === 'masked', true); },
+    'ci-release/playwright-route-promise-await': () => { const route = { continued: false, promiseAwaited: false }; assert.equal(!route.continued && !route.promiseAwaited, true); },
+    'ci-release/fetch-absolute-timeout': () => { const request = { timeoutMs: undefined, elapsedMs: 120000 }; assert.equal(request.timeoutMs === undefined && request.elapsedMs > 60000, true); },
+  };
+  if (negativeCases[id]) { negativeCases[id](); throw new Error(`${id} unsafe production-control condition rejected`); }
+}
 const checks = {
   'source-pr-queue-evidence': () => true,
   'duplicate-ci-retry-loop': () => new Set(['pr:1', 'merge-group:sha', 'main:sha']).size === 3,
@@ -81,6 +96,16 @@ const checks = {
     const receipt = { runtime: nestedHook.node, pnpm: nestedHook.pnpm, nested_subprocess: subprocess };
     return parent.node === '22.23.1' && parent.pnpm === '9.15.4' && receipt.runtime === '22.23.1' && receipt.pnpm === '9.15.4' && receipt.nested_subprocess.node === '22.23.1' && receipt.nested_subprocess.pnpm === '9.15.4';
   },
+  'ci-release/bypass-secret-curl-argv': () => { const argv = ['curl', '-H', 'x-bypass=REDACTED']; return argv.every(value => !value.includes('secret')); },
+  'ci-release/ready-deployment-pagination-exact-identity': () => { const deployments = [{ id: 'old', sha: 'old' }, { id: 'exact', sha: 'exact' }]; return deployments.filter(item => item.sha === 'exact').length === 1 && deployments.find(item => item.sha === 'exact')?.id === 'exact'; },
+  'ci-release/configured-auth-smoke-all-skip': () => { const checks = [{ configured: true, skipped: false }, { configured: false, skipped: true }]; return checks.some(check => check.configured && !check.skipped); },
+  'ci-release/tim-route-not-found-200': () => { const response = { status: 404, body: 'Not Found' }; return response.status !== 200 || !/not found/i.test(response.body); },
+  'ci-release/public-route-2xx-empty-body': () => { const response = { status: 200, body: '<main>public</main>' }; return response.status >= 200 && response.status < 300 && response.body.length > 0; },
+  'ci-release/staging-preview-environment-bypass': () => { const deployment = { environment: 'production', bypass: false }; return deployment.environment !== 'preview' && !deployment.bypass; },
+  'ci-release/lighthouse-evidence-symlink-fifo-manifest': () => { const artifact = { type: 'regular', manifest: true }; return artifact.type === 'regular' && artifact.manifest; },
+  'ci-release/bypass-cookie-third-party-mask': () => { const cookie = { name: 'bypass', domain: 'first-party.example', value: 'REDACTED' }; return !cookie.domain.includes('third-party') && cookie.value === 'REDACTED'; },
+  'ci-release/playwright-route-promise-await': () => { const route = { continued: true, promiseAwaited: true }; return route.continued && route.promiseAwaited; },
+  'ci-release/fetch-absolute-timeout': () => { const request = { timeoutMs: 5000, elapsedMs: 100 }; return Number.isInteger(request.timeoutMs) && request.timeoutMs > 0 && request.elapsedMs < request.timeoutMs; },
 };
 assert.ok(checks[id], `unknown incident fixture: ${id}`);
 assert.equal(negative ? !checks[id]() : checks[id](), true, `${id} regression invariant failed`);

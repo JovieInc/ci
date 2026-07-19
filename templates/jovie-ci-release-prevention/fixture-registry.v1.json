@@ -1,8 +1,21 @@
 {
   "schema_version": 1,
-  "required_incident_count": 29,
+  "required_incident_count": 39,
   "events": ["pull_request", "merge_group"],
   "runner": "node",
   "timeout_seconds": 5,
-  "fixture": "scripts/fixtures/ci-release-prevention-cases.mjs"
+  "fixture": "scripts/fixtures/ci-release-prevention-cases.mjs",
+  "generalizable_scaffold": "templates/jovie-ci-release-prevention",
+  "incident_metadata": {
+    "ci-release/bypass-secret-curl-argv": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/ready-deployment-pagination-exact-identity": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/configured-auth-smoke-all-skip": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/tim-route-not-found-200": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/public-route-2xx-empty-body": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/staging-preview-environment-bypass": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/lighthouse-evidence-symlink-fifo-manifest": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/bypass-cookie-third-party-mask": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/playwright-route-promise-await": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/fetch-absolute-timeout": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" }
+  }
 }
