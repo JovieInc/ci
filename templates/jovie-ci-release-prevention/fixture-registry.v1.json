@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "required_incident_count": 39,
+  "required_incident_count": 48,
   "events": ["pull_request", "merge_group"],
   "runner": "node",
   "timeout_seconds": 5,
@@ -16,6 +16,15 @@
     "ci-release/lighthouse-evidence-symlink-fifo-manifest": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
     "ci-release/bypass-cookie-third-party-mask": { "ci_stage_owner": "post-merge", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
     "ci-release/playwright-route-promise-await": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
-    "ci-release/fetch-absolute-timeout": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" }
+    "ci-release/fetch-absolute-timeout": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/pr-head-claim-freshness": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/update-branch-rebase-provenance": { "ci_stage_owner": "pr", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/immutable-required-workflow-boundary": { "ci_stage_owner": "organization-required-workflow", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/runner-warm-path-bootstrap-loop": { "ci_stage_owner": "runner-canary", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/runner-warm-entrypoint-dependency-closure": { "ci_stage_owner": "runner-canary", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/runner-warm-receipt-identity-path": { "ci_stage_owner": "runner-heartbeat", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/runner-heartbeat-evidence-job-cardinality": { "ci_stage_owner": "runner-heartbeat", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/runner-heartbeat-trusted-main-trigger": { "ci_stage_owner": "runner-heartbeat", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" },
+    "ci-release/generated-bytecode-manifest-containment": { "ci_stage_owner": "landing-manifest", "operator_doc": "docs/operations/ci-release-prevention.md", "postmortem": "docs/postmortems/ci-release-prevention.md", "template_propagation": "templates/jovie-ci-release-prevention" }
   }
 }
