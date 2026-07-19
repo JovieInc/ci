@@ -1,0 +1,8 @@
+{
+  "contract_id": "ci-release/drain-019f75f7/v1",
+  "schema_version": 1,
+  "template_version": "phase-a",
+  "incidents": [
+    "source-pr-queue-evidence", "duplicate-ci-retry-loop", "legacy-merge-queue-label", "async-update-branch-bounds", "superseded-run-capacity", "runner-heartbeat-routing", "runner-image-prerequisites", "runner-image-source-sha-provenance", "cache-artifact-fanout", "runner-emergency-headroom", "sentry-read-gate-scopes", "doppler-sync-freshness", "vercel-immutable-probe", "seo-redirect-auth-html", "lighthouse-assertion-matches", "bypass-secret-containment", "production-workflow-provenance", "production-evidence-freshness", "controller-loop-bounds", "gbrain-readiness-diagnosis", "gbrain-pool-recovery", "coordination-query-bounds", "agent-task-identity-context-drift", "admin-secret-log-redaction", "gbrain-admin-secret-log-redaction", "secret-scan-synthetic-merge-base"
+  ]
+}

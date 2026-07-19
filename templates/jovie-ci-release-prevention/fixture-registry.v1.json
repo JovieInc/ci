@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "events": ["pull_request", "merge_group"],
+  "runner": "node",
+  "timeout_seconds": 5,
+  "fixture": "scripts/fixtures/ci-release-prevention-cases.mjs"
+}
