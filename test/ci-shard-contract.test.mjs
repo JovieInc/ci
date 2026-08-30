@@ -136,7 +136,10 @@ test('red: infrastructure cannot be mislabeled deterministic', () => {
     },
   });
   assert.equal(validateReceipt(invalid).valid, false);
-  assert.equal(shadowFailFastDecision(invalid).wouldCancel, false);
+  assert.equal(
+    shadowFailFastDecision(invalid, { expectedIdentity: identity }).wouldCancel,
+    false
+  );
   const transient = receipt({
     state: 'transient_failure',
     executed: [],
@@ -169,7 +172,40 @@ test('red: cancellation cannot occur before actionable evidence', () => {
       fingerprint: 'test_assertion:a',
     },
   });
-  assert.equal(shadowFailFastDecision(missingEvidence).wouldCancel, false);
+  assert.equal(
+    shadowFailFastDecision(missingEvidence, { expectedIdentity: identity })
+      .wouldCancel,
+    false
+  );
+});
+
+test('red: stale or unbound evidence cannot cancel or remediate', () => {
+  const stale = receipt({
+    state: 'deterministic_failure',
+    executed: [],
+    identityOverride: { headSha: 'd'.repeat(40) },
+    outcome: {
+      failureClass: 'test_assertion',
+      fingerprint: 'test_assertion:a:stale',
+      logsUrl: 'https://github.com/example/log',
+      artifactUrl: 'https://github.com/example/artifact',
+    },
+  });
+  assert.deepEqual(shadowFailFastDecision(stale), {
+    wouldCancel: false,
+    boundedRetry: 0,
+    retainDiagnosticSiblings: 0,
+    reason: 'invalid_evidence',
+  });
+  assert.equal(
+    shadowFailFastDecision(stale, { expectedIdentity: identity }).wouldCancel,
+    false
+  );
+  assert.deepEqual(remediationDecision(stale), {
+    dispatch: false,
+    reason: 'not_effective_deterministic_failure',
+  });
+  assert.equal(remediationDecision(stale, [], identity).dispatch, false);
 });
 
 test('red: nondeterministic and retried attempts cannot tune topology', () => {
@@ -184,12 +220,26 @@ test('red: nondeterministic and retried attempts cannot tune topology', () => {
     },
   });
   assert.equal(
-    timingSampleEligibility(transient, { cleanSamplesForFingerprint: 5 }).eligible,
+    timingSampleEligibility(transient, {
+      cleanSamplesForFingerprint: 5,
+      expectedIdentity: identity,
+    }).eligible,
     false
   );
   const retriedPass = receipt({ outcome: { retryOf: 'timeout:test-a' } });
   assert.equal(
-    timingSampleEligibility(retriedPass, { cleanSamplesForFingerprint: 5 }).eligible,
+    timingSampleEligibility(retriedPass, {
+      cleanSamplesForFingerprint: 5,
+      expectedIdentity: identity,
+    }).eligible,
+    false
+  );
+  const flakyPass = receipt({ outcome: { flaky: true } });
+  assert.equal(
+    timingSampleEligibility(flakyPass, {
+      cleanSamplesForFingerprint: 5,
+      expectedIdentity: identity,
+    }).eligible,
     false
   );
 });
@@ -205,16 +255,20 @@ test('green: deterministic evidence supports immediate or diagnostic-quorum shad
       artifactUrl: 'https://github.com/example/artifact',
     },
   });
-  assert.deepEqual(shadowFailFastDecision(deterministic), {
-    wouldCancel: true,
-    boundedRetry: 0,
-    retainDiagnosticSiblings: 0,
-    reason: 'validated_deterministic_fingerprint',
-  });
+  assert.deepEqual(
+    shadowFailFastDecision(deterministic, { expectedIdentity: identity }),
+    {
+      wouldCancel: true,
+      boundedRetry: 0,
+      retainDiagnosticSiblings: 0,
+      reason: 'validated_deterministic_fingerprint',
+    }
+  );
   assert.equal(
     shadowFailFastDecision(deterministic, {
       mode: 'diagnostic_quorum',
       diagnosticQuorum: 2,
+      expectedIdentity: identity,
     }).retainDiagnosticSiblings,
     2
   );
@@ -231,7 +285,11 @@ test('green: transient retry is bounded and remediation is one-shot', () => {
       artifactUrl: 'https://github.com/example/artifact',
     },
   });
-  assert.equal(shadowFailFastDecision(transient).boundedRetry, 1);
+  assert.equal(
+    shadowFailFastDecision(transient, { expectedIdentity: identity })
+      .boundedRetry,
+    1
+  );
   const deterministic = receipt({
     state: 'deterministic_failure',
     executed: [],
@@ -242,10 +300,10 @@ test('green: transient retry is bounded and remediation is one-shot', () => {
       artifactUrl: 'https://github.com/example/artifact',
     },
   });
-  const first = remediationDecision(deterministic);
+  const first = remediationDecision(deterministic, [], identity);
   assert.equal(first.dispatch, true);
   assert.equal(first.attemptBudget, 1);
-  assert.deepEqual(remediationDecision(deterministic, [first.key]), {
+  assert.deepEqual(remediationDecision(deterministic, [first.key], identity), {
     dispatch: false,
     reason: 'already_consumed',
     key: first.key,
@@ -254,7 +312,10 @@ test('green: transient retry is bounded and remediation is one-shot', () => {
 
 test('green: clean repeated samples are timing-eligible', () => {
   assert.deepEqual(
-    timingSampleEligibility(receipt(), { cleanSamplesForFingerprint: 3 }),
+    timingSampleEligibility(receipt(), {
+      cleanSamplesForFingerprint: 3,
+      expectedIdentity: identity,
+    }),
     { eligible: true, reason: 'clean_repeat_sample' }
   );
 });

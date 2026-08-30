@@ -12,10 +12,18 @@ const operation = process.env.INPUT_OPERATION;
 const operations = {
   validate: () => validateReceipt(payload.receipt, payload.identity),
   aggregate: () => aggregateShards(payload),
-  shadow: () => shadowFailFastDecision(payload.receipt, payload.options),
-  timing: () => timingSampleEligibility(payload.receipt, payload.options),
+  shadow: () =>
+    shadowFailFastDecision(payload.receipt, {
+      ...payload.options,
+      expectedIdentity: payload.identity,
+    }),
+  timing: () =>
+    timingSampleEligibility(payload.receipt, {
+      ...payload.options,
+      expectedIdentity: payload.identity,
+    }),
   remediation: () =>
-    remediationDecision(payload.receipt, payload.consumedKeys),
+    remediationDecision(payload.receipt, payload.consumedKeys, payload.identity),
 };
 if (!operations[operation]) throw new Error(`unknown operation: ${operation}`);
 const result = operations[operation]();
