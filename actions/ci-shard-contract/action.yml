@@ -1,0 +1,19 @@
+name: CI shard contract
+description: Validate portable typed shard receipts and shadow-only controller decisions.
+inputs:
+  operation:
+    description: validate, aggregate, shadow, timing, or remediation
+    required: true
+  payload:
+    description: JSON payload for the selected operation
+    required: true
+  expect:
+    description: Optional partial JSON result expected by a canary
+    required: false
+    default: ''
+outputs:
+  result-json:
+    description: Canonical JSON result
+runs:
+  using: node24
+  main: index.mjs

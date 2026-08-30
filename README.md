@@ -7,7 +7,17 @@ Centralized, opinionated CI for all Jovie repositories — one set of reusable G
 ## Layout
 - `.github/workflows/` — reusable workflows (`on: workflow_call`)
 - `actions/` — shared composite actions
+- `actions/ci-shard-contract/` — provider-neutral typed shard receipts,
+  fail-closed aggregation, and shadow-only cancellation decisions
 - `policy/` — POLICY.md (branch rules, gate tiers, agent PR contract), risk-rules.yml, gitleaks.toml
+
+The shard contract does not enable cancellation. Consumer adapters must remain
+`fail-fast: false` until their own hosted shadow cohort satisfies the contract,
+diagnostic-loss, cost, and rollback thresholds.
+
+Every shadow, timing, and remediation operation must also supply the
+controller's current identity tuple. A structurally valid receipt that is stale
+or not bound to that tuple cannot cancel, tune shard history, or dispatch repair.
 
 ## Gate tiers
 1. **Pre-PR (local/agent harness)** — typecheck, lint, affected unit tests. Never burn a runner on what the agent can run itself.
