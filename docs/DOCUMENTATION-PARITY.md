@@ -23,7 +23,7 @@ fingerprints. A fingerprint is a review trigger, not proof of prose accuracy.
      --upstream JovieInc/Jovie=/path/to/Jovie
    ```
 
-4. Review the diff and run the vendored `python3 tools/repository_docs.py`.
+4. Review the diff and run the vendored `python3 scripts/repository_docs.py`.
 5. Open an independently checked consumer PR. Revert that consumer commit to
    roll back; sibling repos retain their pins and continue shipping.
 
@@ -32,7 +32,7 @@ projection are written. README and AGENTS stay locally owned. Without upstream
 arguments the check proves offline parity to the declared pin, not freshness of
 the pin or remote availability. Update-time Git readback proves source bytes.
 After a local manifest/workflow edit, review its documentation and regenerate
-with `python3 tools/repository_docs.py --write` in the consumer.
+with `python3 scripts/repository_docs.py --write` in the consumer.
 
 ## Qualification
 
