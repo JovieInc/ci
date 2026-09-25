@@ -2,6 +2,8 @@ import importlib.util
 import json
 import subprocess
 import tempfile
+import runpy
+from unittest.mock import patch
 import unittest
 from pathlib import Path
 
@@ -97,6 +99,23 @@ class DocumentationParity(unittest.TestCase):
         self.config["output"] = "package.json"
         self.save()
         with self.assertRaises(ValueError): docs.run(self.root, True)
+
+    def test_cli_entrypoint_and_non_json_source_are_measured(self):
+        self.config["sources"].append({"path": "README.md", "purpose": "Local guidance"})
+        self.save()
+        argv = [str(Path(docs.__file__)), "--root", str(self.root)]
+        with patch("sys.argv", argv):
+            self.assertEqual(docs.main(), 1)
+        with patch("sys.argv", argv + ["--write"]):
+            self.assertEqual(docs.main(), 0)
+        with patch("sys.argv", argv):
+            with self.assertRaises(SystemExit) as result:
+                runpy.run_path(docs.__file__, run_name="__main__")
+            self.assertEqual(result.exception.code, 0)
+        with patch("sys.argv", argv + ["--upstream", "malformed"]):
+            with self.assertRaises(SystemExit) as result:
+                docs.main()
+            self.assertEqual(result.exception.code, 1)
 
     def test_cli_success_drift_and_malformed_config(self):
         script = str(Path(docs.__file__))

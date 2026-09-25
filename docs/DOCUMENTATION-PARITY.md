@@ -37,7 +37,7 @@ with `python3 scripts/repository_docs.py --write` in the consumer.
 ## Qualification
 
 Run `python3 -m coverage run --branch --source=scripts -m unittest discover -s tests -p test_repository_docs.py -v`
-and `python3 -m coverage report --show-missing --fail-under=85`.
+and `python3 -m coverage report --show-missing --fail-under=100`.
 Tests cover source drift, absent entry points, path escape, bad pins, independent
 upgrades and rollback. Consumer CI uses `continue-on-error` during shadow
 qualification. Do not require it in branch protection. Promotion requires actual

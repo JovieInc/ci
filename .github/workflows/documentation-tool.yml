@@ -17,4 +17,4 @@ jobs:
           python-version: '3.12'
       - run: python3 -m pip install 'coverage>=7.6,<8'
       - run: python3 -m coverage run --branch --source=scripts -m unittest discover -s tests -p test_repository_docs.py -v
-      - run: python3 -m coverage report --show-missing --fail-under=85
+      - run: python3 -m coverage report --show-missing --fail-under=100

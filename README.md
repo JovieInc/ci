@@ -28,3 +28,9 @@ then roll out independently; retain known-good pins for rollback.
 Existing consumer checks and release guarantees remain in force. New fleet
 requirements qualify in shadow before enforcement. No sibling repo's healthy
 build depends on every other consumer being green.
+
+## Repository documentation
+
+See [source parity](docs/DOCUMENTATION.md) and the generated
+[source map](docs/REPOSITORY_SOURCES.md). Shared policy is pinned; local
+manifest, build, test and release instructions remain owned by this repository.
