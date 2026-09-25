@@ -1,22 +1,30 @@
 # JovieInc/ci
 
-Centralized, opinionated CI for all Jovie repositories — one set of reusable GitHub Actions workflows, shared composite actions, and a single strict policy for gates, distribution, and agent mediation.
+Shared CI source for independently released company repositories. Consumers own
+their build commands, tests, required checks, deployment and rollback.
 
-**Principle:** update one workflow here → every repo benefits. Consumer repos keep only ~15-line caller stubs pinned to `@v1`.
+## Implemented on this branch
 
-## Layout
-- `.github/workflows/` — reusable workflows (`on: workflow_call`)
-- `actions/` — shared composite actions
-- `policy/` — POLICY.md (branch rules, gate tiers, agent PR contract), risk-rules.yml, gitleaks.toml
+- `.github/workflows/dependabot-auto-merge.yml`: callable dependency mediation.
+- `actions/setup-node-pnpm`, `actions/setup-ios-build`, `actions/asc-api-key`:
+  composite actions; inspect their own inputs and prerequisites before use.
+- `scripts/repository_docs.py`: offline manifest projection and pinned shared-file
+  parity. See [documentation parity](docs/DOCUMENTATION-PARITY.md) for tests,
+  scope, update procedure, shadow qualification and rollback.
+- `policy/`: source policy, risk rules and secret-scanner configuration.
 
-## Gate tiers
-1. **Pre-PR (local/agent harness)** — typecheck, lint, affected unit tests. Never burn a runner on what the agent can run itself.
-2. **PR (required)** — `rw-gate-fast` + risk classifier only. Deep gates run only when `rw-gate-risk` says risk ≥ standard.
-3. **Merge queue** (`merge_group`) — build + E2E smoke on the queued batch.
-4. **Post-merge** — deploy + canary + error gate, **fix-forward**: failures auto-file P1 + capped autofix; never retro-block the queue.
-5. **Scheduled** — nightly full suite, security, CodeQL.
+This list describes source, not consumer adoption or effective branch controls.
+Previously described `rw-gate-fast`, `rw-gate-risk`, `rw-gate-deep` and
+`rw-merge-queue` workflows are not present on this revision. JOV-2970/JOV-2975
+track shared CI; existing PRs retain ownership of their separate implementation.
 
-## Versioning
-Consumers pin `@v1` (moving major tag). Breaking changes bump major. Changes here run actionlint + smoke against consumer repos before tagging.
+## Distribution
 
-Tracked in Linear: JOV-2970 (epic), JOV-2975 (Phase 1).
+JOV-6555 supersedes the old moving-`@v1` proposal: consumers use reviewed full
+commit SHAs and separate upgrade PRs. A central commit does not automatically
+change consumers. Qualify a candidate with relevant tests and a consumer canary,
+then roll out independently; retain known-good pins for rollback.
+
+Existing consumer checks and release guarantees remain in force. New fleet
+requirements qualify in shadow before enforcement. No sibling repo's healthy
+build depends on every other consumer being green.
