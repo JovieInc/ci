@@ -23,7 +23,7 @@
   "imports": [
     {
       "repository": "JovieInc/Jovie",
-      "revision": "b9c1bb7ca2ba0dd0bbb79cbeff265e21ef8791b1",
+      "revision": "b193bc6a360b20df6933d45b4abefe0736c09493",
       "path": "docs/company/REPOSITORY_SOURCE_CONTRACT.md",
       "destination": "docs/company/REPOSITORY_SOURCE_CONTRACT.md",
       "sha256": "f6bb8cdfdc317ed4ac3b99f8d2fc18a9647124c4fb807b1eef274892447b184f"

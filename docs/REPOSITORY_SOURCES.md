@@ -23,4 +23,4 @@ A changed fingerprint requires review of its related documentation; it does not 
 
 Updates are independent reviewable consumer changes. Local instructions remain source-owned.
 
-- `docs/company/REPOSITORY_SOURCE_CONTRACT.md` ← `JovieInc/Jovie@b9c1bb7ca2ba0dd0bbb79cbeff265e21ef8791b1:docs/company/REPOSITORY_SOURCE_CONTRACT.md` (SHA-256 `f6bb8cdfdc317ed4ac3b99f8d2fc18a9647124c4fb807b1eef274892447b184f`)
+- `docs/company/REPOSITORY_SOURCE_CONTRACT.md` ← `JovieInc/Jovie@b193bc6a360b20df6933d45b4abefe0736c09493:docs/company/REPOSITORY_SOURCE_CONTRACT.md` (SHA-256 `f6bb8cdfdc317ed4ac3b99f8d2fc18a9647124c4fb807b1eef274892447b184f`)
