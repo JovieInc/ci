@@ -6,6 +6,9 @@ their build commands, tests, required checks, deployment and rollback.
 ## Implemented on this branch
 
 - `.github/workflows/dependabot-auto-merge.yml`: callable dependency mediation.
+- `.github/workflows/secret-scan.yml`: callable pinned-gitleaks scan of the pushed or
+  PR range (`full-history`, shadow via `fail-on-findings: false`); behavior tests in
+  `tests/test_secret_scan_workflow.py`.
 - `actions/setup-node-pnpm`, `actions/setup-ios-build`, `actions/asc-api-key`:
   composite actions; inspect their own inputs and prerequisites before use.
 - `scripts/repository_docs.py`: offline manifest projection and pinned shared-file
