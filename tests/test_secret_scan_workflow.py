@@ -92,6 +92,44 @@ class SecretScanWorkflow(unittest.TestCase):
         (self.repo / ".gitleaks.toml").write_text("[extend]\nuseDefault = true\n")
         self.assertIn("--config=.gitleaks.toml", self.scan(0)[1])
 
+    def install(self, download=0, checksum=0):
+        bin_dir = self.root / "bin"
+        bin_dir.mkdir(exist_ok=True)
+        tools = {
+            "curl": f'echo "$@" > "{self.root}/curl-args"\nexit {download}',
+            "sha256sum": f'cat > "{self.root}/checksum-input"\nexit {checksum}',
+            "tar": f'touch "{self.root}/extracted"',
+        }
+        for name, body in tools.items():
+            tool = bin_dir / name
+            tool.write_text(f"#!/usr/bin/env bash\n{body}\n")
+            tool.chmod(0o755)
+        runner_temp = self.root / "runner-temp"
+        runner_temp.mkdir(exist_ok=True)
+        github_path = self.root / "github-path"
+        github_path.write_text("")
+        env = {**STEPS["Install pinned gitleaks"]["env"], "PATH": f"{bin_dir}:{os.environ['PATH']}", "RUNNER_TEMP": str(runner_temp), "GITHUB_PATH": str(github_path)}
+        result, _ = self.run_step("Install pinned gitleaks", env)
+        return result, (self.root / "extracted").exists(), github_path.read_text()
+
+    def test_install_verifies_checksum_and_retries_downloads(self):
+        result, extracted, github_path = self.install()
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertTrue(extracted)
+        self.assertIn("runner-temp/gitleaks", github_path)
+        self.assertIn("--retry-all-errors", (self.root / "curl-args").read_text())
+        self.assertIn(STEPS["Install pinned gitleaks"]["env"]["GITLEAKS_SHA256"], (self.root / "checksum-input").read_text())
+
+    def test_install_never_extracts_a_failed_download_or_checksum(self):
+        for kwargs in ({"download": 22}, {"checksum": 1}):
+            result, extracted, github_path = self.install(**kwargs)
+            self.assertNotEqual(result.returncode, 0, kwargs)
+            self.assertFalse(extracted, kwargs)
+            self.assertEqual(github_path, "", kwargs)
+
+    def test_scanner_errors_fail_the_gate(self):
+        self.assertEqual(self.scan(2)[0].returncode, 1)
+
     def test_contract_is_least_privilege_and_pinned(self):
         self.assertEqual(WORKFLOW["permissions"], {})
         self.assertEqual(WORKFLOW["jobs"]["gitleaks"]["permissions"], {"contents": "read"})
