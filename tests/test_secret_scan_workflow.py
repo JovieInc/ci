@@ -54,6 +54,13 @@ class SecretScanWorkflow(unittest.TestCase):
         self.assertEqual(self.resolve("push", PUSH_BEFORE="1" * 40), f"log-opts={self.head}")
         self.assertEqual(self.resolve("schedule"), f"log-opts={self.head}")
 
+    def test_pull_request_target_is_rejected(self):
+        env = {"FULL_HISTORY": "false", "EVENT_NAME": "pull_request_target", "HEAD_SHA": self.head, "PUSH_BEFORE": "", "PR_BASE_SHA": self.base, "MERGE_GROUP_BASE_SHA": ""}
+        result, output = self.run_step("Resolve scan range", env)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("pull_request_target", result.stdout)
+        self.assertEqual(output, "")
+
     def test_full_history_overrides_the_range(self):
         self.assertEqual(self.resolve("push", full="true", PUSH_BEFORE=self.base), "log-opts=--all")
 
