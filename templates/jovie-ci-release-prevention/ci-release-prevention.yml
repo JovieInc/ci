@@ -1,0 +1,5 @@
+template: jovie-ci-release-prevention
+template_version: phase-a
+ledger: ledger.v1.json
+dispatcher: node scripts/ci-release-prevention-dispatch.mjs
+scaffold_proof: node scripts/test-jovie-ci-template-scaffold.mjs
