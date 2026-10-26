@@ -67,6 +67,27 @@ test('malformed receipts remain evidence gaps instead of crashing reconciliation
   }
 });
 
+test('a controller plan must cover every shard with one consistent total', () => {
+  for (const incomplete of [
+    [plan[0]],
+    [plan[1]],
+    [plan[0], { ...plan[1], id: '2/3' }],
+    [plan[0], { ...plan[1], id: '3/2' }],
+  ]) {
+    const result = aggregateShards({ identity, plan: incomplete,
+      receipts: [receipt(), receipt({ index: 2, planned: ['b.test.ts'] })] });
+    assert.equal(result.green, false);
+    assert.ok(result.errors.includes('aggregate.plan_cardinality'));
+  }
+});
+
+test('complete explicitly unselected inventory can report no work successfully', () => {
+  const unselected = plan.map(item => ({ ...item, selected: false, tests: [] }));
+  const receipts = [1, 2].map(index => receipt({ index, state: 'not_selected',
+    planned: [], executed: [], outcome: { selectionReason: 'unchanged surface' } }));
+  assert.equal(aggregateShards({ identity, plan: unselected, receipts }).green, true);
+});
+
 test('green: exact inventory aggregation passes', () => {
   const result = aggregateShards({
     identity,
@@ -136,7 +157,7 @@ test('green contract: a typed cancellation remains deterministically red', () =>
 
 test('red: duplicate inventory and stale identity fail closed', () => {
   const duplicatePlan = [
-    ...plan,
+    ...plan.map((item, index) => ({ ...item, id: `${index + 1}/3` })),
     { id: '3/3', selected: true, tests: ['a.test.ts'] },
   ];
   assert.ok(
