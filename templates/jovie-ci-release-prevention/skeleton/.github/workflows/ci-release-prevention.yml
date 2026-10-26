@@ -3,6 +3,7 @@ name: CI incident metadata shadow
 on:
   pull_request:
     paths:
+      - ".github/workflows/ci-release-prevention.yml"
       - '.github/ci-release-prevention.json'
       - 'ci-release/**'
       - 'scripts/verify-ci-release-incidents.mjs'

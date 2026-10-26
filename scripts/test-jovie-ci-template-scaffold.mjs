@@ -21,6 +21,7 @@ try {
   assert.equal(install(project).status, 0);
   const workflow = await readFile(resolve(project, '.github/workflows/ci-release-prevention.yml'), 'utf8');
   assert.ok(workflow.includes(`verify-ci-release-prevention.yml@${ref}`));
+  assert.ok(workflow.includes('      - ".github/workflows/ci-release-prevention.yml"'), "workflow pin/input changes select the check");
   const baseline = verify();
   assert.equal(baseline.status, 0, baseline.stderr);
   assert.match(baseline.stdout, /does not execute or certify/);
