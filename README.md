@@ -21,6 +21,17 @@ Previously described `rw-gate-fast`, `rw-gate-risk`, `rw-gate-deep` and
 `rw-merge-queue` workflows are not present on this revision. JOV-2970/JOV-2975
 track shared CI; existing PRs retain ownership of their separate implementation.
 
+
+## Typed shard evidence
+
+`actions/ci-shard-contract/` validates provider-neutral shard receipts, exact
+inventory aggregation and shadow-only cancellation decisions. Missing controller
+identity or malformed evidence is indeterminate and cannot authorize success.
+
+Consumers remain `fail-fast: false` until their own hosted shadow cohort meets
+correctness, diagnostic-loss, cost and rollback thresholds. Every shadow, timing
+and remediation decision requires the controller's current identity tuple.
+
 ## Distribution
 
 JOV-6555 supersedes the old moving-`@v1` proposal: consumers use reviewed full

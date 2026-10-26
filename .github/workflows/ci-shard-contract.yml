@@ -1,0 +1,26 @@
+name: CI Shard Contract
+
+on:
+  pull_request:
+    paths:
+      - 'actions/ci-shard-contract/**'
+      - 'lib/ci-shard-contract.mjs'
+      - 'test/ci-shard-contract.test.mjs'
+      - '.github/workflows/ci-shard-contract.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'actions/ci-shard-contract/**'
+      - 'lib/ci-shard-contract.mjs'
+      - 'test/ci-shard-contract.test.mjs'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: node --test test/ci-shard-contract.test.mjs
