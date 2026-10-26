@@ -1,0 +1,17 @@
+{
+  "incidents": [
+    {
+      "id": "ci-release/bootstrap-contract-inheritance",
+      "invariant": "Every recorded incident has complete metadata and repository-local evidence files.",
+      "regression": "scripts/verify-ci-release-incidents.mjs",
+      "ci_stage_owner": "pre-pr",
+      "operator_doc": "docs/operations/ci-release-prevention.md",
+      "postmortem": "docs/postmortems/ci-release-prevention-bootstrap.md",
+      "template_propagation": {
+        "template": "JovieInc/ci/templates/jovie-ci-release-prevention",
+        "bootstrap": "JovieInc/ci/templates/jovie-ci-release-prevention/bootstrap.mjs",
+        "scaffold_proof": "JovieInc/ci/scripts/test-jovie-ci-template-scaffold.mjs"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "contract": "ci-release/v1",
+  "ledger": "ci-release/incidents.json",
+  "template": "JovieInc/ci/templates/jovie-ci-release-prevention",
+  "template_version": "__CI_COMMIT__",
+  "bootstrap": "JovieInc/ci/templates/jovie-ci-release-prevention/bootstrap.mjs",
+  "scaffold_proof": "JovieInc/ci/scripts/test-jovie-ci-template-scaffold.mjs"
+}

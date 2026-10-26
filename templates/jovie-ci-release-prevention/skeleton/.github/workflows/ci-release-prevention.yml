@@ -1,0 +1,22 @@
+name: CI incident metadata shadow
+
+on:
+  pull_request:
+    paths:
+      - '.github/ci-release-prevention.json'
+      - 'ci-release/**'
+      - 'scripts/verify-ci-release-incidents.mjs'
+      - 'docs/operations/ci-release-prevention.md'
+      - 'docs/postmortems/**'
+  merge_group:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci-release-contract:
+    uses: JovieInc/ci/.github/workflows/verify-ci-release-prevention.yml@__CI_COMMIT__
+    with:
+      config_path: .github/ci-release-prevention.json
+      verifier_path: scripts/verify-ci-release-incidents.mjs
