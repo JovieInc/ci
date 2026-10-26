@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "repository": "JovieInc/ci",
+  "entrypoints": [
+    "README.md",
+    "AGENTS.md",
+    "docs/DOCUMENTATION.md"
+  ],
+  "sources": [
+    {
+      "path": ".github/workflows/dependabot-auto-merge.yml",
+      "purpose": "Local manifest or workflow; review related instructions when changed"
+    },
+    {
+      "path": ".github/workflows/documentation-tool.yml",
+      "purpose": "Local manifest or workflow; review related instructions when changed"
+    },
+    {
+      "path": ".github/workflows/repository-docs-shadow.yml",
+      "purpose": "Nonblocking parity qualification"
+    }
+  ],
+  "imports": [
+    {
+      "repository": "JovieInc/Jovie",
+      "revision": "b193bc6a360b20df6933d45b4abefe0736c09493",
+      "path": "docs/company/REPOSITORY_SOURCE_CONTRACT.md",
+      "destination": "docs/company/REPOSITORY_SOURCE_CONTRACT.md",
+      "sha256": "f6bb8cdfdc317ed4ac3b99f8d2fc18a9647124c4fb807b1eef274892447b184f"
+    }
+  ],
+  "output": "docs/REPOSITORY_SOURCES.md"
+}
