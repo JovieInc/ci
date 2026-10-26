@@ -4,6 +4,16 @@ name: Dependabot Auto-Merge
 
 on:
   workflow_call:
+    inputs:
+      certification_labels:
+        description: >-
+          Comma-separated labels applied to patch/minor bumps. Consumers whose
+          queue admission reads a different label (for example LogYourBody's
+          machine-certified) override this so the enrollment controller sees
+          the certification it requires.
+        required: false
+        type: string
+        default: 'merge-queue,tim-approved'
 
 permissions: {}
 
@@ -21,16 +31,22 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Enqueue patch + minor (merge-queue label)
+      - name: Certify patch + minor for queue admission
         if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+          CERTIFICATION_LABELS: ${{ inputs.certification_labels }}
         run: |
+          set -euo pipefail
           echo "Dependency: ${{ steps.meta.outputs.dependency-names }}"
           echo "Update type: ${{ steps.meta.outputs.update-type }}"
-          gh pr edit --add-label "merge-queue" "$PR_URL" || true
-          gh pr edit --add-label "tim-approved" "$PR_URL" || true
+          IFS=',' read -ra labels <<<"$CERTIFICATION_LABELS"
+          for label in "${labels[@]}"; do
+            label="$(echo "$label" | xargs)"
+            [ -n "$label" ] || continue
+            gh pr edit --add-label "$label" "$PR_URL" || true
+          done
 
       - name: Note major bump requires manual review
         if: steps.meta.outputs.update-type == 'version-update:semver-major'

@@ -43,6 +43,30 @@ const plan = [
   { id: '2/2', selected: true, tests: ['b.test.ts'] },
 ];
 
+test('missing controller identity, plan, or receipts cannot report green', () => {
+  for (const input of [undefined, null, {}, { identity },
+    { plan, receipts: [receipt(), receipt({ index: 2, planned: ['b.test.ts'] })] },
+    { identity, plan: [], receipts: [] }, { identity, plan, receipts: null },
+    { identity, plan: [null], receipts: [] },
+    { identity, plan: [plan[0], plan[0]], receipts: [receipt()] }]) {
+    const result = aggregateShards(input);
+    assert.equal(result.green, false, JSON.stringify(input));
+    assert.equal(result.evidenceComplete, false);
+    assert.equal(result.status, 'indeterminate');
+  }
+});
+
+test('malformed receipts remain evidence gaps instead of crashing reconciliation', () => {
+  for (const malformed of [null, {}, receipt({ planned: null }),
+    receipt({ planned: 42 }), receipt({ executed: {} }),
+    { ...receipt(), identity: null }, receipt({ planned: [null], executed: [null] })]) {
+    assert.equal(validateReceipt(malformed).valid, false);
+    const result = aggregateShards({ identity, plan, receipts: [malformed] });
+    assert.equal(result.green, false);
+    assert.equal(result.evidenceComplete, false);
+  }
+});
+
 test('green: exact inventory aggregation passes', () => {
   const result = aggregateShards({
     identity,
