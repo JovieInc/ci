@@ -1,0 +1,52 @@
+name: Verify CI release prevention contract
+
+on:
+  workflow_call:
+    inputs:
+      config_path:
+        description: Repository-relative CI release prevention contract manifest.
+        required: false
+        default: .github/ci-release-prevention.json
+        type: string
+      verifier_path:
+        description: Repository-relative Node verifier committed by the consumer.
+        required: false
+        default: scripts/verify-ci-release-incidents.mjs
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: ci-release-contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 22
+      - name: Reject unsafe contract paths
+        env:
+          CONFIG_PATH: ${{ inputs.config_path }}
+          VERIFIER_PATH: ${{ inputs.verifier_path }}
+        run: |
+          set -euo pipefail
+          [[ "$CONFIG_PATH" =~ ^\.github/[A-Za-z0-9_-]+\.json$ ]] || exit 1
+          [[ "$VERIFIER_PATH" =~ ^scripts/[A-Za-z0-9_-]+\.mjs$ ]] || exit 1
+          case "$CONFIG_PATH" in
+            .github/*.json) ;;
+            *) echo "config_path must be a repository-relative .github JSON file" >&2; exit 1 ;;
+          esac
+          case "$VERIFIER_PATH" in
+            scripts/*.mjs) ;;
+            *) echo "verifier_path must be a repository-relative scripts/*.mjs file" >&2; exit 1 ;;
+          esac
+          test -f "$CONFIG_PATH"
+          test -f "$VERIFIER_PATH"
+      - name: Verify incident metadata (not execution proof)
+        env:
+          CONFIG_PATH: ${{ inputs.config_path }}
+          VERIFIER_PATH: ${{ inputs.verifier_path }}
+        run: node "$VERIFIER_PATH" --config "$CONFIG_PATH"

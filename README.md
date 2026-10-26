@@ -48,3 +48,10 @@ build depends on every other consumer being green.
 See [source parity](docs/DOCUMENTATION.md) and the generated
 [source map](docs/REPOSITORY_SOURCES.md). Shared policy is pinned; local
 manifest, build, test and release instructions remain owned by this repository.
+
+## Optional incident metadata scaffold
+
+The [bootstrap](templates/jovie-ci-release-prevention/README.md) installs a real
+consumer scaffold with an explicitly selected full commit pin. Its check validates
+metadata and file references, not regression execution or prevention coverage.
+Adopt and qualify independently under JOV-6555; preserve existing required gates.
