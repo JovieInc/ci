@@ -9,6 +9,10 @@ their build commands, tests, required checks, deployment and rollback.
 - `.github/workflows/secret-scan.yml`: callable pinned-gitleaks scan of the pushed or
   PR range (`full-history`, shadow via `fail-on-findings: false`); behavior tests in
   `tests/test_secret_scan_workflow.py`.
+- `.github/workflows/private-data-guard.yml`: callable PII/private-path guard for public
+  repos (key/cert/env files, personal-brain dirs, internal hostnames, home paths, private
+  IPs); prints rule and file:line only; path allowlist in `.private-data-allowlist`; tests in
+  `tests/test_private_data_guard_workflow.py`.
 - `actions/setup-node-pnpm`, `actions/setup-ios-build`, `actions/asc-api-key`:
   composite actions; inspect their own inputs and prerequisites before use.
 - `scripts/repository_docs.py`: offline manifest projection and pinned shared-file

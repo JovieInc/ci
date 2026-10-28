@@ -1,0 +1,151 @@
+# Shared private-data guard (workflow_call) for PUBLIC repos. Pin consumers to a full commit SHA:
+#   uses: JovieInc/ci/.github/workflows/private-data-guard.yml@<sha>
+# Fails when a change adds a private-looking path (key/cert/env files, personal-brain
+# directories) or an added line matching a private-content rule (internal hostnames, home
+# paths, private IPs, SSN-shaped values). Findings print rule + file:line only, never the
+# matched value. Complements secret-scan.yml (credentials); this covers PII and private
+# business/infra material that gitleaks does not model.
+# Exceptions: list path regexes (one per line, # comments) in .private-data-allowlist.
+name: Private Data Guard
+
+on:
+  workflow_call:
+    inputs:
+      full-tree:
+        description: Scan every tracked file instead of only the pushed or PR change.
+        required: false
+        type: boolean
+        default: false
+      fail-on-findings:
+        description: Fail the job on findings. Set false while a consumer qualifies in shadow.
+        required: false
+        type: boolean
+        default: true
+      extra-path-patterns:
+        description: Newline-separated extra path regexes to deny.
+        required: false
+        type: string
+        default: ''
+      extra-content-patterns:
+        description: Newline-separated extra content regexes to deny (applied to added lines).
+        required: false
+        type: string
+        default: ''
+
+permissions: {}
+
+jobs:
+  guard:
+    name: Private data guard
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Scan for private data
+        env:
+          FULL_TREE: ${{ inputs.full-tree }}
+          FAIL_ON_FINDINGS: ${{ inputs.fail-on-findings }}
+          EXTRA_PATHS: ${{ inputs.extra-path-patterns }}
+          EXTRA_CONTENT: ${{ inputs.extra-content-patterns }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess, sys
+
+          ZERO = "0" * 40
+          PATH_RULES = [
+              ("env-file", r"(^|/)\.env(\.[^/]+)?$", r"\.(example|sample|template|defaults|test)$"),
+              ("key-or-cert-file", r"\.(p12|p8|pem|pfx|key|mobileprovision|cer|jks|keystore|kdbx)$", None),
+              ("database-or-dump", r"\.(sqlite3?|db|dump|bak)$", None),
+              ("credential-file", r"(^|/)(id_rsa|id_ed25519|\.npmrc|\.netrc|\.pgpass|service-account[^/]*\.json)$", None),
+              ("personal-brain-dir", r"^(people|companies|deals|inbox|brain|persona|personal|investors?|contacts|transcripts)/", None),
+              ("agent-home-dir", r"^\.(hermes|claude/projects)/", None),
+          ]
+          CONTENT_RULES = [
+              ("internal-hostname", r"\b[a-z0-9-]+\.(timwhite\.co|ts\.net)\b"),
+              ("home-path", r"/Users/(?!runner\b|test\b|user\b|me\b|example\b|name\b|you\b|Shared\b)[A-Za-z][A-Za-z0-9._-]+/"),
+              ("agent-home-reference", r"~/\.hermes\b"),
+              ("private-ip", r"(?<![0-9.])(10\.[0-9]{1,3}|192\.168|172\.(1[6-9]|2[0-9]|3[01]))\.[0-9]{1,3}\.[0-9]{1,3}(?![0-9])"),
+              ("ssn-shaped", r"(?<![0-9-])[0-9]{3}-[0-9]{2}-[0-9]{4}(?![0-9-])"),
+          ]
+          for i, p in enumerate(filter(None, (s.strip() for s in os.environ.get("EXTRA_PATHS", "").splitlines()))):
+              PATH_RULES.append((f"extra-path-{i}", p, None))
+          for i, p in enumerate(filter(None, (s.strip() for s in os.environ.get("EXTRA_CONTENT", "").splitlines()))):
+              CONTENT_RULES.append((f"extra-content-{i}", p))
+
+          def git(*a):
+              return subprocess.run(["git", *a], check=True, capture_output=True, text=True).stdout
+
+          allow = []
+          if os.path.isfile(".private-data-allowlist"):
+              for line in open(".private-data-allowlist"):
+                  line = line.split("#", 1)[0].strip()
+                  if line:
+                      allow.append(re.compile(line))
+          allowed = lambda p: any(r.search(p) for r in allow)
+
+          full = os.environ.get("FULL_TREE") == "true"
+          base = {"push": os.environ.get("PUSH_BEFORE"), "pull_request": os.environ.get("PR_BASE_SHA"),
+                  "merge_group": os.environ.get("MERGE_GROUP_BASE_SHA")}.get(os.environ.get("EVENT_NAME", ""), "")
+          head = os.environ["HEAD_SHA"]
+          if not base or base == ZERO or subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True).returncode:
+              full = True  # no trustworthy base: scan the whole tree
+
+          findings = []
+          if full:
+              paths = [p for p in git("ls-files", "-z").split("\0") if p]
+              added = {}
+              for p in paths:
+                  try:
+                      text = open(p, encoding="utf-8", errors="ignore").read() if os.path.getsize(p) < 2_000_000 else ""
+                  except OSError:
+                      continue
+                  added[p] = list(enumerate(text.splitlines(), 1))
+          else:
+              paths = [p for p in git("diff", "--name-only", "--diff-filter=AMR", "-z", base, head).split("\0") if p]
+              added = {}
+              cur, ln = None, 0
+              for line in git("diff", "-U0", "--no-color", "--diff-filter=AMR", base, head).splitlines():
+                  if line.startswith("+++ b/"):
+                      cur = line[6:]; added.setdefault(cur, [])
+                  elif line.startswith("@@"):
+                      m = re.search(r"\+(\d+)", line); ln = int(m.group(1)) if m else 0
+                  elif line.startswith("+") and not line.startswith("+++") and cur:
+                      added[cur].append((ln, line[1:])); ln += 1
+
+          for p in paths:
+              if allowed(p):
+                  continue
+              for name, pat, exempt in PATH_RULES:
+                  if re.search(pat, p) and not (exempt and re.search(exempt, p)):
+                      findings.append((name, p, 0))
+
+          content = [(n, re.compile(p)) for n, p in CONTENT_RULES]
+          for p, lines in added.items():
+              if allowed(p):
+                  continue
+              for ln, text in lines:
+                  for name, rx in content:
+                      if rx.search(text):
+                          findings.append((name, p, ln))
+
+          for name, p, ln in findings:
+              loc = f"{p}:{ln}" if ln else p
+              print(f"::error file={p}::private-data-guard rule={name} at {loc} (value withheld)")
+          print(f"private-data-guard scanned {'tree' if full else 'change'}: {len(findings)} finding(s)")
+          if findings:
+              print("Remove the data or, if it is intentionally public, add a path regex to .private-data-allowlist.")
+              if os.environ.get("FAIL_ON_FINDINGS") == "true":
+                  sys.exit(1)
+              print("::warning::fail-on-findings is false (shadow mode).")
+          PY
