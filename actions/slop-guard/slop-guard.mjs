@@ -73,8 +73,12 @@ if (enabled('passthrough') || enabled('single-impl')) {
   try {
     ts = createRequire(path.join(cwd, 'package.json'))('typescript');
   } catch {
-    console.error('slop-guard: typescript must be installed in the consumer repo (run its install step first).');
-    process.exit(2);
+    try {
+      ts = createRequire(import.meta.url)(path.resolve(process.env.SLOP_TS_DIR ?? '/nonexistent'));
+    } catch {
+      console.error('slop-guard: typescript must be installed in the consumer repo, or SLOP_TS_DIR must point at one.');
+      process.exit(2);
+    }
   }
 }
 
@@ -172,7 +176,7 @@ if (enabled('single-impl')) {
 
 function extern(cmd, cmdArgs) {
   try {
-    return execFileSync(cmd, cmdArgs, { cwd: path.resolve(cwd, config.workdir ?? '.'), encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
+    return execFileSync(cmd[0], [...cmd.slice(1), ...cmdArgs], { cwd: path.resolve(cwd, config.workdir ?? '.'), encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
   } catch (e) {
     if (e.stdout) return e.stdout; // knip/jscpd exit non-zero when they find issues
     throw e;
@@ -181,7 +185,7 @@ function extern(cmd, cmdArgs) {
 
 if (enabled('knip') && config.knip !== false) {
   current.knip = {};
-  const out = JSON.parse(extern('pnpm', ['exec', 'knip', '--reporter', 'json', ...(config.knipArgs ?? [])]));
+  const out = JSON.parse(extern(config.knipCommand ?? ['pnpm', 'exec', 'knip'], ['--reporter', 'json', ...(config.knipArgs ?? [])]));
   const skip = new Set(config.knipIgnoreCategories ?? ['dependencies', 'devDependencies', 'binaries', 'unlisted', 'optionalPeerDependencies']);
   for (const i of out.issues ?? []) {
     for (const [cat, v] of Object.entries(i)) {
@@ -195,7 +199,7 @@ if (enabled('jscpd') && config.jscpd !== false) {
   current.jscpd = {};
   const dir = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? '/tmp', 'jscpd-'));
   const j = config.jscpd ?? {};
-  extern('pnpm', ['exec', 'jscpd', ...(j.paths ?? config.roots), '--reporters', 'json', '--output', dir, '--silent', '--absolute', '--min-lines', String(j.minLines ?? 8), '--min-tokens', String(j.minTokens ?? 70), '--ignore', (j.ignore ?? ['**/node_modules/**', '**/*.test.*', '**/tests/**']).join(',')]);
+  extern(config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'], [...(j.paths ?? config.roots), '--reporters', 'json', '--output', dir, '--silent', '--absolute', '--min-lines', String(j.minLines ?? 8), '--min-tokens', String(j.minTokens ?? 70), '--ignore', (j.ignore ?? ['**/node_modules/**', '**/*.test.*', '**/tests/**']).join(',')]);
   const rep = JSON.parse(fs.readFileSync(path.join(dir, 'jscpd-report.json'), 'utf8'));
   // One counter per file keeps the ratchet attributable: lines of this file inside clones.
   const per = {};
