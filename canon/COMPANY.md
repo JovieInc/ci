@@ -5,6 +5,10 @@ and architecture calls are company-wide, not repo-wide. A repo's AGENTS.md point
 here and adds only a small repo-specific delta. Where this file and a repo copy
 disagree, this file wins; a repo may be stricter, never looser.
 
+AGENTS.md is the canonical agent doc in every repo: it is the real file.
+CLAUDE.md, if a repo has one, is a symlink to it (`ln -s AGENTS.md CLAUDE.md`),
+never the other way round. Checked by `guards/run.mjs` (agents-pointer).
+
 Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
 
     Company canon: JovieInc/ci canon/COMPANY.md (applies in full; this file is the repo delta).
