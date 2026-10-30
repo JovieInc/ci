@@ -1,0 +1,30 @@
+name: slop-guard
+description: >
+  Company-wide anti-slop ratchets (file size, pass-through modules, single-implementation
+  interfaces, prefix sprawl, knip dead code, jscpd duplication). Run after the consumer has
+  installed its dependencies (typescript, knip and jscpd must resolve via `pnpm exec`).
+  Each repo owns a .slop-guard.json config and a .slop-baseline.json that can only shrink.
+inputs:
+  working-directory:
+    description: Directory holding the config, baseline and package.json.
+    default: .
+  config:
+    description: Config file name inside working-directory.
+    default: .slop-guard.json
+  only:
+    description: Comma-separated rules to run (size,prefix,passthrough,single-impl,knip,jscpd). Empty runs all.
+    default: ''
+runs:
+  using: composite
+  steps:
+    - shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        SLOP_CONFIG: ${{ inputs.config }}
+        SLOP_ONLY: ${{ inputs.only }}
+        SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
+      run: |
+        set -euo pipefail
+        args=(--config "$SLOP_CONFIG")
+        if [ -n "$SLOP_ONLY" ]; then args+=(--only "$SLOP_ONLY"); fi
+        node "$SLOP_SCRIPT" "${args[@]}"

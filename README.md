@@ -13,6 +13,11 @@ their build commands, tests, required checks, deployment and rollback.
   repos (key/cert/env files, personal-brain dirs, internal hostnames, home paths, private
   IPs); prints rule and file:line only; path allowlist in `.private-data-allowlist`; tests in
   `tests/test_private_data_guard_workflow.py`.
+- `actions/slop-guard`: composite action running the company anti-slop ratchets (file size,
+  pass-through modules, single-implementation interfaces, prefix sprawl, knip, jscpd) against a
+  per-repo `.slop-guard.json` and a shrink-only `.slop-baseline.json`. Consumer usage:
+  `uses: JovieInc/ci/actions/slop-guard@<sha>` after the repo's install step; tests in
+  `actions/slop-guard/slop-guard.test.mjs`, qualified by `slop-guard-self.yml`.
 - `actions/setup-node-pnpm`, `actions/setup-ios-build`, `actions/asc-api-key`:
   composite actions; inspect their own inputs and prerequisites before use.
 - `scripts/repository_docs.py`: offline manifest projection and pinned shared-file

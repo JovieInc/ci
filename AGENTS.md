@@ -15,3 +15,9 @@ this task does not certify their planned workflows as implemented.
 See [source parity](docs/DOCUMENTATION.md) and the generated
 [source map](docs/REPOSITORY_SOURCES.md). Shared policy is pinned; local
 manifest, build, test and release instructions remain owned by this repository.
+
+## Anti-slop ratchets
+
+`actions/slop-guard` is the company-wide suite (size, pass-through, single-implementation, prefix
+sprawl, knip, jscpd). Rule semantics live in its header comment; consumers own only config and a
+baseline that can shrink, never grow. Change a rule here, with a deliberate-red fixture in its test.
