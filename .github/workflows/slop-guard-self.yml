@@ -1,0 +1,23 @@
+name: Slop guard qualification
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  behavior:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Install typescript for the fixtures
+        run: npm install --prefix "$RUNNER_TEMP/ts" --no-save --no-audit --no-fund typescript@6.0.3
+      - name: Behaviour tests (deliberate-red fixtures per rule)
+        env:
+          SLOP_TS_DIR: ${{ runner.temp }}/ts/node_modules/typescript
+        run: node --test actions/slop-guard/slop-guard.test.mjs
