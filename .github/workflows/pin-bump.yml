@@ -31,6 +31,7 @@ jobs:
           GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
           [ -n "$GH_TOKEN" ] || { echo "jovie-bot app not configured (JOVIE_BOT_APP_ID / JOVIE_BOT_PRIVATE_KEY); skipping"; exit 0; }
+          gh auth setup-git
           for repo in $(node -e 'console.log(require("./canon/consumers.json").repos.join(" "))'); do
             gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
             f="w-$repo/.github/workflows/company-guards.yml"
