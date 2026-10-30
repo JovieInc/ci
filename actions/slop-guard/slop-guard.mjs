@@ -200,7 +200,9 @@ if (enabled('jscpd') && config.jscpd !== false) {
   const dir = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? '/tmp', 'jscpd-'));
   const j = config.jscpd ?? {};
   extern(config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'], [...(j.paths ?? config.roots), '--reporters', 'json', '--output', dir, '--silent', '--absolute', '--min-lines', String(j.minLines ?? 8), '--min-tokens', String(j.minTokens ?? 70), '--ignore', (j.ignore ?? ['**/node_modules/**', '**/*.test.*', '**/tests/**']).join(',')]);
-  const rep = JSON.parse(fs.readFileSync(path.join(dir, 'jscpd-report.json'), 'utf8'));
+  const reportFile = path.join(dir, 'jscpd-report.json');
+  if (!fs.existsSync(reportFile)) throw new Error('slop-guard: jscpd produced no report (is jscpd installed for this repo?)');
+  const rep = JSON.parse(fs.readFileSync(reportFile, 'utf8'));
   // One counter per file keeps the ratchet attributable: lines of this file inside clones.
   const per = {};
   for (const d of rep.duplicates ?? []) {
