@@ -120,18 +120,19 @@ if (BASE) {
   const ref = baseCfg ?? DEFAULT_POLICY;
   console.log(`[config] compared to ${baseCfg ? 'base' : 'pinned default policy (base has no config)'}`);
   const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  const cf = baseCfg ? fail : policyFail; // introduction: the whole config is a CODEOWNER-approved event
   const capsNow = { ...DEFAULT_POLICY.caps, ...config.caps }, capsRef = { ...DEFAULT_POLICY.caps, ...ref.caps };
-  for (const k of Object.keys(capsNow)) if (capsNow[k] > capsRef[k]) fail(`cap ${k} raised ${capsRef[k]} -> ${capsNow[k]}`);
+  for (const k of Object.keys(capsNow)) if (capsNow[k] > capsRef[k]) cf(`cap ${k} raised ${capsRef[k]} -> ${capsNow[k]}`);
   for (const k of ['ignore', 'sizeExempt', 'passthroughExempt', 'prefixIgnore', 'knipIgnoreCategories', 'knipArgs']) {
     const had = new Set(ref[k] ?? []);
-    for (const x of config[k] ?? []) if (!had.has(x)) fail(`${k} gained "${x}"`);
+    for (const x of config[k] ?? []) if (!had.has(x)) cf(`${k} gained "${x}"`);
   }
-  for (const x of ref.roots ?? []) if (!(config.roots ?? []).includes(x)) fail(`root "${x}" dropped`);
+  for (const x of ref.roots ?? []) if (!(config.roots ?? []).includes(x)) cf(`root "${x}" dropped`);
   for (const k of ['knip', 'jscpd']) if (config[k] === false && ref[k] !== false) (baseCfg ? fail : policyFail)(`${k} disabled`);
-  if ((config.testPattern ?? '') !== (ref.testPattern ?? '')) fail('testPattern changed');
+  if ((config.testPattern ?? '') !== (ref.testPattern ?? '')) cf('testPattern changed');
   const bj = ref.jscpd ?? {}, hj = config.jscpd ?? {};
-  for (const k of ['minLines', 'minTokens']) if (hj[k] !== undefined && hj[k] > (bj[k] ?? 0)) fail(`jscpd.${k} raised`);
-  for (const x of hj.ignore ?? []) if (!(bj.ignore ?? []).includes(x)) fail(`jscpd.ignore gained "${x}"`);
+  for (const k of ['minLines', 'minTokens']) if (hj[k] !== undefined && hj[k] > (bj[k] ?? 0)) cf(`jscpd.${k} raised`);
+  for (const x of hj.ignore ?? []) if (!(bj.ignore ?? []).includes(x)) cf(`jscpd.ignore gained "${x}"`);
   // Policy fields are locked: any change needs a CODEOWNER-applied label.
   const polRef = { baseline: ref.baseline ?? DEFAULT_POLICY.baseline, knipCommand: ref.knipCommand ?? DEFAULT_POLICY.knipCommand, jscpdPaths: ref.jscpd?.paths ?? ref.roots, tsconfigDir: ref.tsconfigDir ?? '.', jscpdCommand: ref.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'] };
   const polNow = { baseline: config.baseline ?? DEFAULT_POLICY.baseline, knipCommand: config.knipCommand ?? DEFAULT_POLICY.knipCommand, jscpdPaths: config.jscpd?.paths ?? config.roots, tsconfigDir: config.tsconfigDir ?? '.', jscpdCommand: config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'] };

@@ -123,10 +123,11 @@ test('a base without config or baseline never skips: pinned defaults apply and i
   assert.equal(r.status, 1);
   assert.match(r.stdout, /baseline introduced/);
   assert.equal(run(d, '--base', base, '--policy-approved').status, 0);
-  // Loosened caps fail even when the policy label is present: only policy fields are labelable.
+  // Once a config exists at the base, loosened caps fail even with the policy label: only policy fields are labelable.
+  const base2 = git(d, 'rev-parse', 'HEAD').trim();
   const cfg = JSON.parse(fs.readFileSync(path.join(d, '.slop-guard.json')));
   fs.writeFileSync(path.join(d, '.slop-guard.json'), JSON.stringify({ ...cfg, caps: { source: 5000 } }));
-  assert.equal(run(d, '--base', base, '--policy-approved').status, 1);
+  assert.equal(run(d, '--base', base2, '--policy-approved').status, 1);
 });
 
 test('policy fields (baseline path, knipCommand, tsconfig) are locked to the base unless approved', () => {
