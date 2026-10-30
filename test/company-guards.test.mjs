@@ -45,3 +45,21 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   const types = f.map((x) => `${x.name}:${x.type}`);
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
+
+import { policyFor, checkPr, ratchet } from '../guards/plugins/data-paths.mjs';
+const dp = policyFor(JSON.parse(readFileSync(new URL('../canon/data-paths.json', import.meta.url))), 'Jovie');
+const f = (filename, additions = 1, deletions = 0, status = 'modified') => ({ filename, additions, deletions, status });
+test('data-paths: wins-only PR fails, mixed passes, label waives', () => {
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('docs/metrics/wins-latest.json')], dp).length, 1);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('scripts/x.mjs')], dp).length, 0);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl')], dp, ['data-exception']).length, 0);
+});
+test('data-paths: append-only registry row alone fails, edits to rows pass', () => {
+  assert.equal(checkPr([f('canon/automation-registry.jsonl')], dp).length, 1);
+  assert.equal(checkPr([f('canon/automation-registry.jsonl', 1, 1)], dp).length, 0);
+});
+test('data-paths: ratchet only shrinks', () => {
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: [] }).fails.length, 1);
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
+  assert.equal(ratchet([], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
+});
