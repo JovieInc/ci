@@ -68,17 +68,21 @@ export function passthrough({ files, isTest, ts, parse, config }) {
 
 function isPassThrough(ts, sf) {
   const imported = new Set();
+  const importSource = new Map(); // local name -> module, so `import {a} from 'x'; export {a}` counts x
   const sources = new Set();
   let exports = 0, logic = false;
   for (const s of sf.statements) {
     if (ts.isImportDeclaration(s)) {
       const c = s.importClause;
-      if (c?.name) imported.add(c.name.text);
-      if (c?.namedBindings) ts.isNamespaceImport(c.namedBindings) ? imported.add(c.namedBindings.name.text) : c.namedBindings.elements.forEach((e) => imported.add(e.name.text));
+      const spec = s.moduleSpecifier.text;
+      const add = (n) => { imported.add(n); importSource.set(n, spec); };
+      if (c?.name) add(c.name.text);
+      if (c?.namedBindings) ts.isNamespaceImport(c.namedBindings) ? add(c.namedBindings.name.text) : c.namedBindings.elements.forEach((e) => add(e.name.text));
     } else if (ts.isTypeAliasDeclaration(s) || ts.isInterfaceDeclaration(s) || noop(ts, s)) {
       // types and no-op statements never count as logic
     } else if (ts.isExportDeclaration(s)) {
       if (s.moduleSpecifier) sources.add(s.moduleSpecifier.text);
+      else if (s.exportClause && ts.isNamedExports(s.exportClause)) for (const e of s.exportClause.elements) { const m = importSource.get((e.propertyName ?? e.name).text); if (m) sources.add(m); }
       exports++;
     } else if (ts.isExportAssignment(s)) {
       if (!aliasOrForward(ts, s.expression, imported)) logic = true;

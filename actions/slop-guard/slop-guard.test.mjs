@@ -179,13 +179,14 @@ test('passthrough: forwarding shapes fail, logic, barrels, boundary and route fi
     'src/logic.ts': `${real}export function h(a: number) { return real(a) * 2; }\n`,
     'src/reorder.ts': `${real}export function r(a: number, b: number) { return real(b, a); }\n`,
     'src/index.ts': "export { real } from './real';\nexport { h } from './logic';\n",
+    'src/barrel2.ts': "import { real } from './real';\nimport { h } from './logic';\nexport { real, h };\n",
     'src/app/page.tsx': "export { default } from './impl';\n",
     'src/app/api/route.ts': "export { GET } from './impl';\n",
   });
   const r = run(d, '--only', 'passthrough');
   assert.equal(r.status, 1);
   for (const bad of ['reexport', 'star', 'forward', 'arrow', 'alias', 'member', 'dflt', 'noop', 'noopfn', 'todo', 'nested', 'short']) assert.ok(flagged(r, `src/${bad}\\.ts`) || r.stdout.includes(`src/${bad}.ts`), bad);
-  for (const ok of ['real', 'boundary', 'logic', 'reorder', 'index', 'page', 'route']) assert.doesNotMatch(r.stdout, new RegExp(`src/(app/)?(api/)?${ok}\\.tsx?[ \\n(]`), ok);
+  for (const ok of ['real', 'boundary', 'logic', 'reorder', 'index', 'barrel2', 'page', 'route']) assert.doesNotMatch(r.stdout, new RegExp(`src/(app/)?(api/)?${ok}\\.tsx?[ \\n(]`), ok);
 });
 
 test('single-impl: resolved by module, counts object-literal and factory implementations and test doubles', () => {
