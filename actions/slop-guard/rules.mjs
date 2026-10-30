@@ -148,7 +148,7 @@ export function singleImpl({ files, isTest, ts, parse, cwd, config }) {
       const abs = ts.isClassDeclaration(n) && n.modifiers?.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword);
       // Data-only interfaces (no methods or callable members) are shapes, not swappable abstractions.
       const behavioural = abs || (ts.isInterfaceDeclaration(n) && n.members.some((m) => ts.isMethodSignature(m) || ts.isCallSignatureDeclaration(m) || (ts.isPropertySignature(m) && m.type && ts.isFunctionTypeNode(m.type))));
-      if (behavioural && n.name && !isTest(f)) {
+      if (behavioural && n.name && !isTest(f) && !/^Use[A-Z]\w*(Return|Result)$/.test(n.name.text)) {
         const id = `${f}#${n.name.text}`;
         decls.set(id, f);
         byName.set(n.name.text, [...(byName.get(n.name.text) ?? []), id]);
@@ -172,15 +172,26 @@ export function singleImpl({ files, isTest, ts, parse, cwd, config }) {
     return c?.length === 1 ? c[0] : null;
   };
   const typeId = (f, sf, t) => (t && ts.isTypeReferenceNode(t) && ts.isIdentifier(t.typeName) ? resolveIn(f, sf, t.typeName.text) : null);
-  const objectish = (e) => e && (ts.isObjectLiteralExpression(e) || ts.isArrowFunction(e) || ts.isCallExpression(e) || ts.isNewExpression(e));
+  const returnsObjectLiteral = (fn) => {
+    if (!fn.body) return false;
+    if (!ts.isBlock(fn.body)) return ts.isObjectLiteralExpression(fn.body) || (ts.isParenthesizedExpression(fn.body) && ts.isObjectLiteralExpression(fn.body.expression));
+    let found = false;
+    const walk = (n) => {
+      if (ts.isFunctionLike(n) && n !== fn) return;
+      if (ts.isReturnStatement(n) && n.expression && ts.isObjectLiteralExpression(n.expression)) found = true;
+      ts.forEachChild(n, walk);
+    };
+    walk(fn.body);
+    return found;
+  };
   for (const [f, sf] of parsed) {
     const visit = (n) => {
       if (ts.isClassDeclaration(n)) for (const h of n.heritageClauses ?? []) for (const t of h.types) if (ts.isIdentifier(t.expression)) { const id = resolveIn(f, sf, t.expression.text); if (id) bump(id, f); }
       // object-literal and factory implementations: `x satisfies I`, `x as I`, `const x: I = {...}`, `function make(): I`
       let ty = null;
       if ((ts.isAsExpression(n) || ts.isSatisfiesExpression?.(n)) && ts.isObjectLiteralExpression(n.expression)) ty = n.type;
-      else if (ts.isVariableDeclaration(n) && objectish(n.initializer)) ty = n.type;
-      else if ((ts.isFunctionDeclaration(n) || ts.isArrowFunction(n) || ts.isFunctionExpression(n) || ts.isMethodDeclaration(n)) && n.body) {
+      else if (ts.isVariableDeclaration(n) && n.initializer && ts.isObjectLiteralExpression(n.initializer)) ty = n.type;
+      else if ((ts.isFunctionDeclaration(n) || ts.isArrowFunction(n) || ts.isFunctionExpression(n) || ts.isMethodDeclaration(n)) && returnsObjectLiteral(n)) {
         ty = n.type;
         if (ty && ts.isTypeReferenceNode(ty) && ts.isIdentifier(ty.typeName) && ty.typeName.text === 'Promise' && ty.typeArguments?.[0]) ty = ty.typeArguments[0];
       }

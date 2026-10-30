@@ -37,6 +37,28 @@ runs:
         if [ -n "$BASE_SHA" ]; then
           git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$BASE_SHA"
         fi
+    - name: Check for a CODEOWNER-applied slop-guard-policy label
+      id: policy
+      if: github.event_name == 'pull_request'
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GH_TOKEN: ${{ github.token }}
+        REPO: ${{ github.repository }}
+        PR: ${{ github.event.pull_request.number }}
+        HAS_LABEL: ${{ contains(github.event.pull_request.labels.*.name, 'slop-guard-policy') }}
+      run: |
+        # Fails closed: any API error or an unowned labeler leaves the policy unapproved.
+        approved=false
+        if [ "$HAS_LABEL" = true ]; then
+          actor="$(gh api "repos/$REPO/issues/$PR/events" --paginate --jq '[.[] | select(.event=="labeled" and .label.name=="slop-guard-policy")] | last | .actor.login' 2>/dev/null || true)"
+          owners=""
+          for f in "$(git rev-parse --show-toplevel)/.github/CODEOWNERS" "$(git rev-parse --show-toplevel)/CODEOWNERS" "$(git rev-parse --show-toplevel)/docs/CODEOWNERS"; do
+            [ -f "$f" ] && owners="$owners $(grep -v '^[[:space:]]*#' "$f" | grep -oE '@[A-Za-z0-9_.-]+' | tr -d '@')"
+          done
+          if [ -n "$actor" ] && [ "$actor" != null ] && printf '%s\n' $owners | grep -qixF "$actor"; then approved=true; fi
+        fi
+        echo "approved=$approved" >> "$GITHUB_OUTPUT"
     - name: Run slop guard
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -45,9 +67,11 @@ runs:
         SLOP_ONLY: ${{ inputs.only }}
         SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
         BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+        POLICY_APPROVED: ${{ steps.policy.outputs.approved || 'false' }}
       run: |
         set -euo pipefail
         args=(--config "$SLOP_CONFIG")
+        if [ "$POLICY_APPROVED" = true ]; then args+=(--policy-approved); fi
         if [ -n "$SLOP_ONLY" ]; then args+=(--only "$SLOP_ONLY"); fi
         # A PR with a missing base cannot be compared; fail closed rather than skip the tamper check.
         if [ "${{ github.event_name }}" = pull_request ] || [ "${{ github.event_name }}" = merge_group ]; then
@@ -67,11 +91,15 @@ runs:
         REPO: ${{ github.repository }}
       run: |
         set -euo pipefail
-        node "$SLOP_SCRIPT" --config "$SLOP_CONFIG" --base "$BASE_SHA" --update >/dev/null
+        node "$SLOP_SCRIPT" --config "$SLOP_CONFIG" --base "$BASE_SHA" --update >/dev/null || { echo "::warning::baseline update skipped"; exit 0; }
         baseline="$(node -e "console.log(require('path').resolve(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).baseline ?? '.slop-baseline.json'))" "$SLOP_CONFIG")"
         rel="$(git ls-files --full-name -- "$baseline")"
         if git diff --quiet -- "$baseline"; then echo "baseline already minimal"; exit 0; fi
-        sha="$(gh api "repos/$REPO/contents/$rel?ref=$HEAD_REF" --jq .sha)"
-        gh api -X PUT "repos/$REPO/contents/$rel" -f message="chore(slop-guard): lower baseline for fixed debt" \
-          -f branch="$HEAD_REF" -f sha="$sha" -f content="$(base64 < "$baseline" | tr -d '\n')" >/dev/null
-        echo "baseline lowered on $HEAD_REF"
+        # Fail open: a missing permission or an API error warns and never fails the check.
+        if sha="$(gh api "repos/$REPO/contents/$rel?ref=$HEAD_REF" --jq .sha)" \
+          && gh api -X PUT "repos/$REPO/contents/$rel" -f message="chore(slop-guard): lower baseline for fixed debt" \
+            -f branch="$HEAD_REF" -f sha="$sha" -f content="$(base64 < "$baseline" | tr -d '\n')" >/dev/null; then
+          echo "baseline lowered on $HEAD_REF"
+        else
+          echo "::warning::slop-guard could not commit the lowered baseline (no write permission?); run the guard with --update locally"
+        fi
