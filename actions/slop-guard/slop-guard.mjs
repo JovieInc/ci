@@ -65,7 +65,7 @@ const notes = {
   size: `source files over ${caps.source} lines, tests over ${caps.test} (schema/env files ${caps.schema})`,
   prefix: `more than ${caps.prefix} files sharing a name prefix in one folder, or ${caps.prefixGlobal} across 3+ folders`,
   passthrough: 'files that only re-export, alias or forward to another module (add a top-level `// boundary: <reason>` if genuine)',
-  'single-impl': 'interfaces/abstract classes with exactly one implementation and no test double',
+  'single-impl': 'behavioural interfaces/abstract classes (with methods) that have exactly one implementation and no test double',
   knip: 'dead code (unused files/exports/types) reported by knip',
   jscpd: 'duplicated lines per file (union of jscpd clone ranges)',
 };

@@ -146,7 +146,9 @@ export function singleImpl({ files, isTest, ts, parse, cwd, config }) {
   for (const [f, sf] of parsed) {
     sf.statements.forEach((n) => {
       const abs = ts.isClassDeclaration(n) && n.modifiers?.some((m) => m.kind === ts.SyntaxKind.AbstractKeyword);
-      if ((ts.isInterfaceDeclaration(n) || abs) && n.name && !isTest(f)) {
+      // Data-only interfaces (no methods or callable members) are shapes, not swappable abstractions.
+      const behavioural = abs || (ts.isInterfaceDeclaration(n) && n.members.some((m) => ts.isMethodSignature(m) || ts.isCallSignatureDeclaration(m) || (ts.isPropertySignature(m) && m.type && ts.isFunctionTypeNode(m.type))));
+      if (behavioural && n.name && !isTest(f)) {
         const id = `${f}#${n.name.text}`;
         decls.set(id, f);
         byName.set(n.name.text, [...(byName.get(n.name.text) ?? []), id]);
