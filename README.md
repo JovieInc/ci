@@ -15,7 +15,7 @@ their build commands, tests, required checks, deployment and rollback.
   `tests/test_private_data_guard_workflow.py`.
 - `actions/slop-guard`: composite action running the company anti-slop ratchets (file size,
   pass-through modules, single-implementation interfaces, prefix sprawl, knip, jscpd) against a
-  per-repo `.slop-guard.json` and a shrink-only `.slop-baseline.json`. Consumer usage:
+  per-repo policy kept in ci (`actions/slop-guard/policy/`) and a shrink-only baseline owned by the repo. Consumer usage:
   `uses: JovieInc/ci/actions/slop-guard@<sha>` after the repo's install step; tests in
   `actions/slop-guard/slop-guard.test.mjs`, qualified by `slop-guard-self.yml`.
 - `actions/setup-node-pnpm`, `actions/setup-ios-build`, `actions/asc-api-key`:

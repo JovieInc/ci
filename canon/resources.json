@@ -1,0 +1,537 @@
+{
+ "schema": "company-resource-registry/v1",
+ "note": "Single canonical list of real resources. Extends, not replaces, ops/registry/credentials.json and inventory.gen.json in Jovie (secret names, spend); those stay authoritative for credentials. Seeded 2026-10-29 from live scans. Cloudflare workers: none registered yet; scan skips until a CF token is wired.",
+ "canonicalGithubOwner": "JovieInc",
+ "nonCanonicalGithubOwners": [
+  "meetjovie",
+  "itstimwhite"
+ ],
+ "reuses": [
+  "Jovie:ops/registry/credentials.json",
+  "Jovie:ops/registry/inventory.gen.json",
+  "Jovie:ops/registry/spend.json"
+ ],
+ "resources": [
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/Jovie",
+   "purposeKey": "jovie-product",
+   "owner": "Summer",
+   "purpose": "Jovie product monorepo (web, iOS, mac, canon)",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/summer-config",
+   "purposeKey": "summer-agent",
+   "owner": "Tim",
+   "purpose": "Summer company agent source and config",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/LogYourBody",
+   "purposeKey": "lyb-app",
+   "owner": "Tim",
+   "purpose": "LogYourBody iOS app",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/Ops",
+   "purposeKey": "company-ops",
+   "owner": "Tim",
+   "purpose": "Company operations workspace",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/symphony",
+   "purposeKey": "symphony-orchestrator",
+   "owner": "Tim",
+   "purpose": "Symphony orchestrator (Elixir)",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/symphony-control",
+   "purposeKey": "symphony-control",
+   "owner": "Tim",
+   "purpose": "Symphony control plane",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/gbrain",
+   "purposeKey": "gbrain",
+   "owner": "Tim",
+   "purpose": "gbrain knowledge brain",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/ci",
+   "purposeKey": "company-ci",
+   "owner": "Tim",
+   "purpose": "Shared CI, company canon and guards",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/lyb-knowledge",
+   "purposeKey": "lyb-knowledge",
+   "owner": "Tim",
+   "purpose": "LogYourBody knowledge base",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/zoe-config",
+   "purposeKey": "zoe-config",
+   "owner": "Tim",
+   "purpose": "Dormant since 2026-09; review for archive",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/retouching",
+   "purposeKey": "retouching",
+   "owner": "Tim",
+   "purpose": "Dormant since 2026-09; review for archive",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/BubblegumFactory",
+   "purposeKey": "bubblegumfactory",
+   "owner": "Tim",
+   "purpose": "Dormant since 2026-09; review for archive",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/symphony-ops",
+   "purposeKey": "symphony-ops",
+   "owner": "Tim",
+   "purpose": "Dormant since 2026-09; review for archive",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
+  },
+  {
+   "kind": "github-repo",
+   "name": "JovieInc/ios-certificates",
+   "purposeKey": "ios-certificates",
+   "owner": "Tim",
+   "purpose": "iOS signing certificates (match); referenced by credentials registry and gem-repo-registry, so NOT archived",
+   "status": "canonical",
+   "note": "Pushes needed for cert renewal."
+  },
+  {
+   "kind": "vercel-project",
+   "name": "jovie",
+   "purposeKey": "jovie-web-app",
+   "owner": "Summer",
+   "purpose": "Jovie web app (jov.ie)",
+   "status": "canonical",
+   "team": "jovie"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "summer",
+   "purposeKey": "summer-agent-app",
+   "owner": "Summer",
+   "purpose": "Summer agent app",
+   "status": "canonical",
+   "team": "jovie"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "jovie-docs",
+   "purposeKey": "jovie-docs",
+   "owner": "Summer",
+   "purpose": "Docs site",
+   "status": "canonical",
+   "team": "jovie"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "log-your-body",
+   "purposeKey": "lyb-web",
+   "owner": "Summer",
+   "purpose": "LogYourBody web (logyourbody.com)",
+   "status": "canonical",
+   "team": "jovie"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "shouldimake",
+   "purposeKey": "shouldimake",
+   "owner": "Summer",
+   "purpose": "Should I Make app",
+   "status": "canonical",
+   "team": "jovie"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "jovie-eve-shadow",
+   "purposeKey": "summer-agent-app",
+   "owner": "Summer",
+   "purpose": "Duplicate Summer project; currently serves summer.jov.ie",
+   "status": "duplicate",
+   "team": "jovie",
+   "proposedAction": "merge into summer: move domain summer.jov.ie, then archive (needs Tim's yes)",
+   "note": "Linked to summer-config and serves summer.jov.ie. Untouched until the domain is moved."
+  },
+  {
+   "kind": "vercel-project",
+   "name": "jovie-web",
+   "purposeKey": "jovie-web-app",
+   "owner": "Summer",
+   "purpose": "Duplicate Jovie project",
+   "status": "duplicate",
+   "team": "jovie",
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "jovie-v1",
+   "purposeKey": "jovie-web-app",
+   "owner": "Summer",
+   "purpose": "Duplicate Jovie project",
+   "status": "duplicate",
+   "team": "jovie",
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "web",
+   "purposeKey": "jovie-web-app",
+   "owner": "Summer",
+   "purpose": "Duplicate Jovie project",
+   "status": "duplicate",
+   "team": "jovie",
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "doha",
+   "purposeKey": "unregistered-doha",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "houston",
+   "purposeKey": "unregistered-houston",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "la-paz-v1",
+   "purposeKey": "unregistered-la-paz-v1",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "lyb-vercel-scope-1d2m0j",
+   "purposeKey": "unregistered-lyb-vercel-scope-1d2m0j",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-new-project-2rn94pa9eiv",
+   "purposeKey": "unregistered-v0-new-project-2rn94pa9eiv",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-portfolio",
+   "purposeKey": "unregistered-v0-portfolio",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-new-project-eyxkms4menm",
+   "purposeKey": "unregistered-v0-new-project-eyxkms4menm",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-muffintop",
+   "purposeKey": "unregistered-v0-muffintop",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-hero-geometric-background",
+   "purposeKey": "unregistered-v0-hero-geometric-background",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "v0-creative-agency-portfolio",
+   "purposeKey": "unregistered-v0-creative-agency-portfolio",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "nextjs-boilerplate",
+   "purposeKey": "unregistered-nextjs-boilerplate",
+   "owner": "unassigned",
+   "purpose": "No registered purpose",
+   "status": "unregistered",
+   "team": "jovie",
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "tw-nuxtsite",
+   "purposeKey": "personal-tw-nuxtsite",
+   "owner": "Tim",
+   "purpose": "Personal scope (tim-white-s-team), not company canon",
+   "status": "non-canonical",
+   "team": "tim-white-s-team",
+   "note": "timwhite.co personal site"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "tbf-website",
+   "purposeKey": "personal-tbf-website",
+   "owner": "Tim",
+   "purpose": "Personal scope (tim-white-s-team), not company canon",
+   "status": "non-canonical",
+   "team": "tim-white-s-team",
+   "note": "personal"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "nuxtjovie",
+   "purposeKey": "personal-nuxtjovie",
+   "owner": "Tim",
+   "purpose": "Personal scope (tim-white-s-team), not company canon",
+   "status": "non-canonical",
+   "team": "tim-white-s-team",
+   "note": "legacy www.jov.ie Nuxt site"
+  },
+  {
+   "kind": "vercel-project",
+   "name": "headsupdisplay",
+   "purposeKey": "personal-headsupdisplay",
+   "owner": "Tim",
+   "purpose": "Personal scope (tim-white-s-team), not company canon",
+   "status": "non-canonical",
+   "team": "tim-white-s-team",
+   "note": "personal"
+  },
+  {
+   "kind": "doppler-project",
+   "name": "agent-mesh",
+   "purposeKey": "agent-mesh",
+   "owner": "Summer",
+   "purpose": "Agent mesh sender tokens",
+   "status": "canonical"
+  },
+  {
+   "kind": "doppler-project",
+   "name": "agent-mesh-dots",
+   "purposeKey": "agent-mesh-dots",
+   "owner": "Summer",
+   "purpose": "Dots mesh token",
+   "status": "canonical"
+  },
+  {
+   "kind": "doppler-project",
+   "name": "automation",
+   "purposeKey": "automation-keys",
+   "owner": "Summer",
+   "purpose": "Automation and research keys",
+   "status": "canonical"
+  },
+  {
+   "kind": "doppler-project",
+   "name": "jovie-web",
+   "purposeKey": "jovie-web-secrets",
+   "owner": "Summer",
+   "purpose": "Jovie web app secrets",
+   "status": "canonical"
+  },
+  {
+   "kind": "doppler-project",
+   "name": "jovie-eve-shadow",
+   "purposeKey": "summer-agent-secrets",
+   "owner": "Summer",
+   "purpose": "Isolated Eve shadow Summer iMessage",
+   "status": "shadow",
+   "proposedAction": "decide: keep as shadow or merge into summer secrets (needs Tim's yes)"
+  },
+  {
+   "kind": "domain",
+   "name": "jov.ie",
+   "purposeKey": "domain-jov.ie",
+   "owner": "Summer",
+   "purpose": "Jovie production",
+   "status": "canonical"
+  },
+  {
+   "kind": "domain",
+   "name": "staging.jov.ie",
+   "purposeKey": "domain-staging.jov.ie",
+   "owner": "Summer",
+   "purpose": "Jovie staging canary",
+   "status": "canonical"
+  },
+  {
+   "kind": "domain",
+   "name": "summer.jov.ie",
+   "purposeKey": "domain-summer.jov.ie",
+   "owner": "Summer",
+   "purpose": "Summer app",
+   "status": "canonical"
+  },
+  {
+   "kind": "domain",
+   "name": "logyourbody.com",
+   "purposeKey": "domain-logyourbody.com",
+   "owner": "Summer",
+   "purpose": "LogYourBody",
+   "status": "canonical"
+  },
+  {
+   "kind": "domain",
+   "name": "timwhite.co",
+   "purposeKey": "domain-timwhite.co",
+   "owner": "Tim",
+   "purpose": "Tim personal",
+   "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/Jovie",
+   "purposeKey": "legacy-meetjovie-jovie",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/docs",
+   "purposeKey": "legacy-meetjovie-docs",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/JovieForGmail",
+   "purposeKey": "legacy-meetjovie-jovieforgmail",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/changelog",
+   "purposeKey": "legacy-meetjovie-changelog",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/vue-tailwind-datepicker",
+   "purposeKey": "legacy-meetjovie-vue-tailwind-datepicker",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  }
+ ],
+ "personalRepoPolicy": "Repos under itstimwhite are never archived by agents; Tim reviews them via the Linear list."
+}

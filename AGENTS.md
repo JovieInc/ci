@@ -19,5 +19,7 @@ manifest, build, test and release instructions remain owned by this repository.
 ## Anti-slop ratchets
 
 `actions/slop-guard` is the company-wide suite (size, pass-through, single-implementation, prefix
-sprawl, knip, jscpd). Rule semantics live in its header comment; consumers own only config and a
-baseline that can shrink, never grow. Change a rule here, with a deliberate-red fixture in its test.
+sprawl, knip, jscpd). Rule semantics live in its header comment; policy lives in `actions/slop-guard/policy/<owner>__<repo>/`; consumers own only a
+baseline that can shrink, never grow. Change a rule or policy here, with a deliberate-red fixture in its test.
+
+Company canon: JovieInc/ci canon/COMPANY.md (applies in full; this file is the repo delta).
