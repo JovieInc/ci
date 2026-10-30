@@ -3,7 +3,7 @@
 // Vercel projects and Doppler projects, compares with canon/resources.json and emits a
 // report of duplicates / unregistered / orphaned resources with a PROPOSED action.
 // Never deletes anything. Sources without credentials are reported as skipped.
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -46,7 +46,9 @@ export function collect(registry) {
   try {
     const names = [];
     for (const scope of ['jovie', 'tim-white-s-team']) {
-      const out = sh('vercel', ['project', 'ls', '--scope', scope]);
+      const r = spawnSync('vercel', ['project', 'ls', '--scope', scope, '--no-color'], { encoding: 'utf8', timeout: 60000 });
+      if (r.status !== 0) throw new Error(`vercel scope ${scope}: ${(r.stderr || '').split('\n').find((l) => /Error/.test(l)) || 'failed'}`);
+      const out = `${r.stdout}\n${r.stderr}`; // the CLI prints the table to stderr
       let on = false;
       for (const l of out.split('\n')) { if (/^\s*Project Name/.test(l)) { on = true; continue; } if (on && l.trim()) { const n = l.trim().split(/\s+/)[0]; if (/^[a-z0-9][\w.-]*$/i.test(n)) names.push(n); } }
     }
