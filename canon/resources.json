@@ -90,8 +90,9 @@
    "purposeKey": "zoe-config",
    "owner": "Tim",
    "purpose": "Dormant since 2026-09; review for archive",
-   "status": "dormant",
-   "proposedAction": "archive (needs Tim's yes)"
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
   },
   {
    "kind": "github-repo",
@@ -99,8 +100,9 @@
    "purposeKey": "retouching",
    "owner": "Tim",
    "purpose": "Dormant since 2026-09; review for archive",
-   "status": "dormant",
-   "proposedAction": "archive (needs Tim's yes)"
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
   },
   {
    "kind": "github-repo",
@@ -108,8 +110,9 @@
    "purposeKey": "bubblegumfactory",
    "owner": "Tim",
    "purpose": "Dormant since 2026-09; review for archive",
-   "status": "dormant",
-   "proposedAction": "archive (needs Tim's yes)"
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
   },
   {
    "kind": "github-repo",
@@ -117,17 +120,18 @@
    "purposeKey": "symphony-ops",
    "owner": "Tim",
    "purpose": "Dormant since 2026-09; review for archive",
-   "status": "dormant",
-   "proposedAction": "archive (needs Tim's yes)"
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Dormant since 2026-09; archived with Tim's approval, reversible (unarchive in repo settings)."
   },
   {
    "kind": "github-repo",
    "name": "JovieInc/ios-certificates",
    "purposeKey": "ios-certificates",
    "owner": "Tim",
-   "purpose": "Dormant since 2026-09; review for archive",
-   "status": "dormant",
-   "proposedAction": "archive (needs Tim's yes)"
+   "purpose": "iOS signing certificates (match); referenced by credentials registry and gem-repo-registry, so NOT archived",
+   "status": "canonical",
+   "note": "Pushes needed for cert renewal."
   },
   {
    "kind": "vercel-project",
@@ -182,7 +186,8 @@
    "purpose": "Duplicate Summer project; currently serves summer.jov.ie",
    "status": "duplicate",
    "team": "jovie",
-   "proposedAction": "merge into summer: move domain summer.jov.ie, then archive (needs Tim's yes)"
+   "proposedAction": "merge into summer: move domain summer.jov.ie, then archive (needs Tim's yes)",
+   "note": "Linked to summer-config and serves summer.jov.ie. Untouched until the domain is moved."
   },
   {
    "kind": "vercel-project",
@@ -192,7 +197,9 @@
    "purpose": "Duplicate Jovie project",
    "status": "duplicate",
    "team": "jovie",
-   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)"
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -202,7 +209,9 @@
    "purpose": "Duplicate Jovie project",
    "status": "duplicate",
    "team": "jovie",
-   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)"
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -212,7 +221,9 @@
    "purpose": "Duplicate Jovie project",
    "status": "duplicate",
    "team": "jovie",
-   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)"
+   "proposedAction": "delete after confirming no domains/envs (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -222,7 +233,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -232,7 +245,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -242,7 +257,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -252,7 +269,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -262,7 +281,10 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -272,7 +294,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -282,7 +306,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -292,7 +318,10 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -302,7 +331,9 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "n/a (had no git link)",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -312,7 +343,10 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -322,7 +356,10 @@
    "purpose": "No registered purpose",
    "status": "unregistered",
    "team": "jovie",
-   "proposedAction": "delete or archive (needs Tim's yes)"
+   "proposedAction": "delete or archive (needs Tim's yes)",
+   "gitDisconnected": "2026-10-29",
+   "reason": "Git integration disconnected 2026-10-29 so it stops building; project kept. Deletion needs Tim to approve each item individually.",
+   "deletePolicy": "never auto-delete; per-item approval from Tim"
   },
   {
    "kind": "vercel-project",
@@ -444,6 +481,57 @@
    "owner": "Tim",
    "purpose": "Tim personal",
    "status": "canonical"
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/Jovie",
+   "purposeKey": "legacy-meetjovie-jovie",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/docs",
+   "purposeKey": "legacy-meetjovie-docs",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/JovieForGmail",
+   "purposeKey": "legacy-meetjovie-jovieforgmail",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/changelog",
+   "purposeKey": "legacy-meetjovie-changelog",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
+  },
+  {
+   "kind": "github-repo",
+   "name": "meetjovie/vue-tailwind-datepicker",
+   "purposeKey": "legacy-meetjovie-vue-tailwind-datepicker",
+   "owner": "Tim",
+   "purpose": "Legacy meetjovie org repo (not canonical)",
+   "status": "archived",
+   "archivedAt": "2026-10-29",
+   "reason": "Legacy org; canonical owner is JovieInc. Archived with Tim's approval, reversible."
   }
- ]
+ ],
+ "personalRepoPolicy": "Repos under itstimwhite are never archived by agents; Tim reviews them via the Linear list."
 }
