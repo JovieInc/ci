@@ -1,0 +1,25 @@
+{
+  "schema": "company-data-paths/v1",
+  "rule": "Data lives in runtime stores; git holds behaviour. A PR whose diff is only data paths, or only appended log rows, is rejected. Policy is defined here only; repos never carry their own copy.",
+  "exceptionLabel": "data-exception",
+  "default": {
+    "dataPaths": ["canon/wins/**", "docs/metrics/**", "**/*.ndjson"],
+    "appendOnly": []
+  },
+  "repos": {
+    "Jovie": {
+      "dataPaths": [
+        "apps/web/reports/**",
+        "docs/TEST_COVERAGE_HEATMAP.md",
+        "docs/NIGHTLY_TESTING_AGENT_REPORT.md",
+        "apps/web/reports/test-coverage-snapshot.json"
+      ],
+      "appendOnly": ["canon/automation-registry.jsonl"]
+    },
+    "summer-config": {"dataPaths": [], "appendOnly": []},
+    "LogYourBody": {"dataPaths": [], "appendOnly": []},
+    "Ops": {"dataPaths": [], "appendOnly": []},
+    "symphony-control": {"dataPaths": [], "appendOnly": []},
+    "symphony": {"dataPaths": [], "appendOnly": []}
+  }
+}
