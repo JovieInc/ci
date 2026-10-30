@@ -1,0 +1,39 @@
+# Daily: list real GitHub/Vercel/Doppler resources, compare with canon/resources.json,
+# open (or update) one issue with duplicates / unregistered / orphaned resources and a
+# proposed action. Never deletes. Needs secrets VERCEL_TOKEN and DOPPLER_TOKEN; missing
+# sources are reported as skipped in the issue.
+name: Resource Drift Scan
+on:
+  schedule: [{ cron: '17 6 * * *' }]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Install CLIs
+        run: |
+          npm i -g vercel@59 >/dev/null 2>&1 || true
+          curl -Ls https://cli.doppler.com/install.sh | sudo sh >/dev/null 2>&1 || true
+      - name: Scan
+        env:
+          GH_TOKEN: ${{ secrets.RESOURCE_SCAN_GH_TOKEN || github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DOPPLER_TOKEN: ${{ secrets.DOPPLER_TOKEN }}
+        run: node scripts/resource-drift.mjs > report.json
+      - name: Open or update issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          n=$(node -e 'const r=require("./report.json");console.log(r.findings.length)')
+          title="resource-drift: $n finding(s)"
+          body=$(node -e 'const r=require("./report.json");console.log("Proposed actions only; destructive steps need Tim'"'"'s yes.\n\nSkipped sources: "+(r.skipped.join("; ")||"none")+"\n\n"+r.findings.map(f=>`- ${f.kind} \`${f.name}\` ${f.type}: ${f.proposedAction}`).join("\n"))')
+          gh label create resource-drift --color B60205 2>/dev/null || true
+          existing=$(gh issue list --label resource-drift --state open --json number --jq '.[0].number')
+          if [ "$n" = 0 ]; then [ -n "$existing" ] && gh issue close "$existing" -c "Clean scan."; exit 0; fi
+          if [ -n "$existing" ]; then gh issue edit "$existing" --title "$title" --body "$body"; else gh issue create --label resource-drift --title "$title" --body "$body"; fi

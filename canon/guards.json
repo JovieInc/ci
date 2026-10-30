@@ -1,0 +1,10 @@
+{
+  "schema": "company-guards/v1",
+  "guards": [
+    {"id": "mention", "owner": "ci", "mode": "enforce", "source": "guards/mention.mjs"},
+    {"id": "size-500", "owner": "ci", "mode": "ratchet", "source": "guards/size.mjs"},
+    {"id": "agents-pointer", "owner": "ci", "mode": "enforce", "source": "guards/run.mjs"},
+    {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
+    {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"}
+  ]
+}

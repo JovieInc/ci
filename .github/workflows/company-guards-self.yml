@@ -1,0 +1,20 @@
+name: Company Guards Self
+on:
+  pull_request:
+    paths: ['canon/**', 'guards/**', 'scripts/resource-drift.mjs', 'test/company-guards.test.mjs', '.github/workflows/**']
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - run: node --test test/company-guards.test.mjs
+      - name: Dogfood the suite and pointer check
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node guards/run.mjs
