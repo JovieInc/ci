@@ -1,5 +1,6 @@
 # When canon/ or guards/ change on main, open a pin-bump PR in every consumer.
-# Needs secret COMPANY_BOT_TOKEN (PR write on consumers); without it the job is a no-op.
+# Uses the jovie-bot GitHub App (short-lived token). Needs repo variable JOVIE_BOT_APP_ID and
+# secret JOVIE_BOT_PRIVATE_KEY; without them the job is a no-op.
 name: Pin Bump
 on:
   push:
@@ -13,14 +14,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
-      GH_TOKEN: ${{ secrets.COMPANY_BOT_TOKEN }}
       SHA: ${{ github.sha }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
+      - name: Mint short-lived jovie-bot token
+        id: app
+        if: ${{ vars.JOVIE_BOT_APP_ID != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.JOVIE_BOT_APP_ID }}
+          private-key: ${{ secrets.JOVIE_BOT_PRIVATE_KEY }}
+          owner: JovieInc
       - name: Open a bump PR per consumer
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
         run: |
-          [ -n "$GH_TOKEN" ] || { echo "COMPANY_BOT_TOKEN not set; skipping"; exit 0; }
+          [ -n "$GH_TOKEN" ] || { echo "jovie-bot app not configured (JOVIE_BOT_APP_ID / JOVIE_BOT_PRIVATE_KEY); skipping"; exit 0; }
           for repo in $(node -e 'console.log(require("./canon/consumers.json").repos.join(" "))'); do
             gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
             f="w-$repo/.github/workflows/company-guards.yml"
