@@ -3,28 +3,75 @@ description: >
   Company-wide anti-slop ratchets (file size, pass-through modules, single-implementation
   interfaces, prefix sprawl, knip dead code, jscpd duplication). Run after the consumer has
   installed its dependencies (typescript, knip and jscpd must resolve via `pnpm exec`).
-  Each repo owns a .slop-guard.json config and a .slop-baseline.json that can only shrink.
+  Each repo owns a config and a baseline; both are compared to the base revision so neither can
+  be loosened or grown in the PR that is being checked. Protect both files with CODEOWNERS.
 inputs:
   working-directory:
     description: Directory holding the config, baseline and package.json.
     default: .
   config:
-    description: Config file name inside working-directory.
+    description: Config file path inside working-directory.
     default: .slop-guard.json
   only:
     description: Comma-separated rules to run (size,prefix,passthrough,single-impl,knip,jscpd). Empty runs all.
     default: ''
+  auto-shrink:
+    description: >
+      On same-repo pull requests, commit a lowered baseline back to the PR branch when debt was fixed.
+      Needs contents:write on `token`. Use a token that triggers workflows (app/PAT), since pushes made
+      with the default GITHUB_TOKEN do not start new runs and would leave required checks pending.
+    default: 'false'
+  token:
+    description: Token used to fetch the base revision and for auto-shrink commits.
+    default: ${{ github.token }}
 runs:
   using: composite
   steps:
-    - shell: bash
+    - name: Fetch base revision
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      run: |
+        set -euo pipefail
+        if [ -n "$BASE_SHA" ]; then
+          git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$BASE_SHA"
+        fi
+    - name: Run slop guard
+      shell: bash
       working-directory: ${{ inputs.working-directory }}
       env:
         SLOP_CONFIG: ${{ inputs.config }}
         SLOP_ONLY: ${{ inputs.only }}
         SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
       run: |
         set -euo pipefail
         args=(--config "$SLOP_CONFIG")
         if [ -n "$SLOP_ONLY" ]; then args+=(--only "$SLOP_ONLY"); fi
+        # A PR with a missing base cannot be compared; fail closed rather than skip the tamper check.
+        if [ "${{ github.event_name }}" = pull_request ] || [ "${{ github.event_name }}" = merge_group ]; then
+          args+=(--base "$BASE_SHA")
+        fi
         node "$SLOP_SCRIPT" "${args[@]}"
+    - name: Lower the baseline for fixed debt
+      if: inputs.auto-shrink == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SLOP_CONFIG: ${{ inputs.config }}
+        SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        node "$SLOP_SCRIPT" --config "$SLOP_CONFIG" --base "$BASE_SHA" --update >/dev/null
+        baseline="$(node -e "console.log(require('path').resolve(JSON.parse(require('fs').readFileSync(process.argv[1],'utf8')).baseline ?? '.slop-baseline.json'))" "$SLOP_CONFIG")"
+        rel="$(git ls-files --full-name -- "$baseline")"
+        if git diff --quiet -- "$baseline"; then echo "baseline already minimal"; exit 0; fi
+        sha="$(gh api "repos/$REPO/contents/$rel?ref=$HEAD_REF" --jq .sha)"
+        gh api -X PUT "repos/$REPO/contents/$rel" -f message="chore(slop-guard): lower baseline for fixed debt" \
+          -f branch="$HEAD_REF" -f sha="$sha" -f content="$(base64 < "$baseline" | tr -d '\n')" >/dev/null
+        echo "baseline lowered on $HEAD_REF"

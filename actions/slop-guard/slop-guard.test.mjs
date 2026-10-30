@@ -10,90 +10,203 @@ import path from 'node:path';
 
 const SCRIPT = path.resolve(import.meta.dirname, 'slop-guard.mjs');
 const tsDir = process.env.SLOP_TS_DIR ?? path.dirname(createRequire(import.meta.url).resolve('typescript/package.json'));
+const git = (d, ...a) => execFileSync('git', ['-c', 'user.email=t@t', '-c', 'user.name=t', ...a], { cwd: d, encoding: 'utf8' });
 
 function repo(files, config = {}) {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'slop-'));
+  git(dir, 'init', '-q');
   fs.mkdirSync(path.join(dir, 'node_modules'));
   fs.symlinkSync(tsDir, path.join(dir, 'node_modules', 'typescript'));
+  fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\nbuild-out\n');
   fs.writeFileSync(path.join(dir, 'package.json'), '{}');
   fs.writeFileSync(path.join(dir, '.slop-guard.json'), JSON.stringify({ roots: ['src'], knip: false, jscpd: false, ...config }));
+  put(dir, files);
+  return dir;
+}
+function put(dir, files) {
   for (const [f, c] of Object.entries(files)) {
     fs.mkdirSync(path.dirname(path.join(dir, f)), { recursive: true });
     fs.writeFileSync(path.join(dir, f), c);
   }
-  return dir;
 }
 const run = (dir, ...a) => spawnSync('node', [SCRIPT, ...a], { cwd: dir, encoding: 'utf8' });
+const commit = (d, m = 'c') => { git(d, 'add', '-A'); git(d, 'commit', '-qm', m); return git(d, 'rev-parse', 'HEAD').trim(); };
 const lines = (n) => 'export const x = 1;\n'.repeat(n);
+const baseOf = (d) => JSON.parse(fs.readFileSync(path.join(d, '.slop-baseline.json')));
+const flagged = (r, name) => new RegExp(`(NEW|GREW)[^\\n]*\\n(\\s+[^\\n]*\\n)*?\\s+${name}`).test(r.stdout);
 
-test('size: a new oversized file fails, test files get the higher cap', () => {
-  const d = repo({ 'src/big.ts': lines(501), 'src/ok.ts': lines(10), 'src/a.test.ts': lines(900) });
-  const r = run(d);
+test('size: new oversized fails; tests, schema and env files get their own caps', () => {
+  const d = repo({ 'src/big.ts': lines(501), 'src/ok.ts': lines(10), 'src/a.test.ts': lines(900), 'src/db/schema.ts': lines(2500), 'src/env.ts': lines(600) });
+  const r = run(d, '--only', 'size');
   assert.equal(r.status, 1);
-  assert.match(r.stdout, /NEW[^\n]*\n\s+src\/big\.ts/);
-  assert.doesNotMatch(r.stdout, /a\.test\.ts/);
+  assert.match(r.stdout, /src\/big\.ts/);
+  for (const ok of ['a\\.test', 'db\\/schema', 'src\\/env']) assert.doesNotMatch(r.stdout, new RegExp(ok));
 });
 
-test('ratchet: baselined passes, growth fails, shrink demands --update, update never raises', () => {
+test('ratchet: growth budget, shrink warns, update only lowers', () => {
   const d = repo({ 'src/big.ts': lines(520) });
-  const base = () => JSON.parse(fs.readFileSync(path.join(d, '.slop-baseline.json'))).size['src/big.ts'];
   const set = (n) => fs.writeFileSync(path.join(d, 'src/big.ts'), lines(n));
   assert.equal(run(d, '--init').status, 0);
   assert.equal(run(d).status, 0);
-  set(530);
-  assert.equal(run(d).status, 1, 'growth fails');
-  assert.equal(run(d, '--update').status, 1, 'update refuses to raise');
-  assert.equal(base(), 520);
+  set(540); // exactly +20
+  assert.equal(run(d).status, 0, 'small growth budget');
+  set(541);
+  assert.equal(run(d).status, 1, 'beyond the budget fails');
+  assert.equal(run(d, '--update').status, 1);
+  assert.equal(baseOf(d).size['src/big.ts'], 520);
   set(510);
-  assert.equal(run(d).status, 1, 'improvement must be locked in');
+  assert.equal(run(d).status, 0, 'improvement never blocks');
   assert.equal(run(d, '--update').status, 0);
-  assert.equal(base(), 510);
-  set(515);
-  assert.equal(run(d).status, 1, 'cannot drift back up to the old baseline');
+  assert.equal(baseOf(d).size['src/big.ts'], 510);
   set(20);
-  assert.equal(run(d).status, 1, 'fixed offender must leave the baseline');
   assert.equal(run(d, '--update').status, 0);
-  assert.equal(run(d).status, 0);
+  assert.deepEqual(baseOf(d).size, {});
 });
 
-test('prefix sprawl', () => {
-  const files = Object.fromEntries(Array.from({ length: 4 }, (_, i) => [`src/provider-${i}.ts`, lines(1)]));
-  assert.equal(run(repo(files), '--only', 'prefix').status, 0);
-  assert.equal(run(repo(files, { caps: { prefix: 3 } }), '--only', 'prefix').status, 1);
+test('base comparison: raised entries, loosened config and dropped roots fail; shrinking passes', () => {
+  const d = repo({ 'src/big.ts': lines(520), 'src/other.ts': lines(600) }, { caps: { source: 500 } });
+  run(d, '--init');
+  const base = commit(d);
+  assert.equal(run(d, '--base', base).status, 0);
+  const cfg = () => JSON.parse(fs.readFileSync(path.join(d, '.slop-guard.json')));
+  const writeCfg = (c) => fs.writeFileSync(path.join(d, '.slop-guard.json'), JSON.stringify(c));
+  const orig = cfg();
+  for (const [name, mutate] of [
+    ['raised cap', (c) => ({ ...c, caps: { source: 900 } })],
+    ['ignore added', (c) => ({ ...c, ignore: ['src/big'] })],
+    ['dropped root', (c) => ({ ...c, roots: [] })],
+    ['exempt added', (c) => ({ ...c, sizeExempt: ['big'] })],
+  ]) {
+    writeCfg(mutate(orig));
+    assert.equal(run(d, '--base', base).status, 1, name);
+  }
+  writeCfg(orig);
+  const b = baseOf(d); b.size['src/big.ts'] = 525; fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
+  assert.equal(run(d, '--base', base).status, 1, 'raised baseline');
+  b.size['src/big.ts'] = 520; b.size['src/new.ts'] = 999; fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
+  assert.equal(run(d, '--base', base).status, 1, 'added baseline entry');
+  fs.writeFileSync(path.join(d, 'src/big.ts'), lines(100)); run(d, '--update');
+  assert.equal(run(d, '--base', base).status, 0, 'shrunk baseline passes');
 });
 
-test('passthrough: re-export file, forwarding function; boundary comment and real logic pass', () => {
+test('renames carry the baseline entry', () => {
+  const d = repo({ 'src/big.ts': lines(520) });
+  run(d, '--init');
+  const base = commit(d);
+  git(d, 'mv', 'src/big.ts', 'src/moved.ts');
+  commit(d, 'rename');
+  assert.equal(run(d, '--base', base, '--only', 'size').status, 0);
+  assert.equal(run(d, '--only', 'size').status, 1, 'without base info a move looks new');
+});
+
+test('discovery: generated headers skipped; vendor and build dirs scanned; gitignored output skipped', () => {
+  const d = repo({
+    'src/gen.ts': `// @generated by tool\n${lines(600)}`,
+    'src/vendor/v.ts': lines(600),
+    'src/build/b.ts': lines(600),
+    'src/build-out/o.ts': lines(600),
+  });
+  const r = run(d, '--only', 'size');
+  assert.match(r.stdout, /src\/vendor\/v\.ts/);
+  assert.match(r.stdout, /src\/build\/b\.ts/);
+  assert.doesNotMatch(r.stdout, /gen\.ts|build-out/);
+});
+
+test('prefix sprawl: kebab, Pascal, snake and cross-folder', () => {
+  const mk = (names, dir = 'src') => Object.fromEntries(names.map((n) => [`${dir}/${n}`, lines(1)]));
+  const caps = { prefix: 3, prefixGlobal: 5 };
+  assert.equal(run(repo(mk(['provider-a.ts', 'provider-b.ts', 'provider-c.ts']), { caps }), '--only', 'prefix').status, 0);
+  for (const names of [['provider-a.ts', 'provider-b.ts', 'provider-c.ts', 'provider-d.ts'], ['ProviderA.tsx', 'ProviderB.tsx', 'ProviderC.tsx', 'ProviderD.tsx'], ['provider_a.ts', 'provider_b.ts', 'provider_c.ts', 'provider_d.ts']]) {
+    assert.equal(run(repo(mk(names), { caps }), '--only', 'prefix').status, 1, names[0]);
+  }
+  const cross = { ...mk(['provider-a.ts', 'provider-b.ts'], 'src/a'), ...mk(['provider-c.ts', 'provider-d.ts'], 'src/b'), ...mk(['provider-e.ts', 'provider-f.ts'], 'src/c') };
+  assert.equal(run(repo(cross, { caps }), '--only', 'prefix').status, 1);
+});
+
+test('passthrough: forwarding shapes fail, logic, barrels, boundary and route files pass', () => {
+  const real = "import { real } from './real';\n";
   const d = repo({
     'src/real.ts': 'export function real(a: number) { return a + 1; }\n',
     'src/reexport.ts': "export { real } from './real';\n",
     'src/star.ts': "export * from './real';\n",
-    'src/forward.ts': "import { real } from './real';\nexport function f(a: number, b: number) { return real(a, b); }\n",
-    'src/arrow.ts': "import { real } from './real';\nexport const g = async (a: number) => real(a);\n",
+    'src/forward.ts': `${real}export function f(a: number, b: number) { return real(a, b); }\n`,
+    'src/arrow.ts': `${real}export const g = async (a: number) => real(a);\n`,
+    'src/alias.ts': `${real}export const alias = real;\n`,
+    'src/member.ts': "import * as ns from './real';\nexport const m = ns.real;\n",
+    'src/dflt.ts': `${real}export default real;\n`,
+    'src/noop.ts': `'use strict';\n${real};\nvoid 0;\n// eslint-disable-next-line\nexport { real };\n`,
+    'src/noopfn.ts': `${real}export function n(a: number) { void 0; return real(a); }\n`,
     'src/boundary.ts': "// boundary: public SDK entry point\nexport { real } from './real';\n",
-    'src/logic.ts': "import { real } from './real';\nexport function h(a: number) { return real(a) * 2; }\n",
-    'src/reorder.ts': "import { real } from './real';\nexport function r(a: number, b: number) { return real(b, a); }\n",
+    'src/todo.ts': "// boundary: TODO\nexport { real } from './real';\n",
+    'src/nested.ts': "export {\n  // boundary: inside the braces is not top level\n  real,\n} from './real';\n",
+    'src/short.ts': "// boundary: x\nexport { real } from './real';\n",
+    'src/logic.ts': `${real}export function h(a: number) { return real(a) * 2; }\n`,
+    'src/reorder.ts': `${real}export function r(a: number, b: number) { return real(b, a); }\n`,
     'src/index.ts': "export { real } from './real';\nexport { h } from './logic';\n",
+    'src/app/page.tsx': "export { default } from './impl';\n",
+    'src/app/api/route.ts': "export { GET } from './impl';\n",
   });
   const r = run(d, '--only', 'passthrough');
   assert.equal(r.status, 1);
-  for (const bad of ['reexport', 'star', 'forward', 'arrow']) assert.match(r.stdout, new RegExp(`src/${bad}\\.ts`));
-  for (const ok of ['real', 'boundary', 'logic', 'reorder', 'index']) assert.doesNotMatch(r.stdout, new RegExp(`src/${ok}\\.ts`));
+  for (const bad of ['reexport', 'star', 'forward', 'arrow', 'alias', 'member', 'dflt', 'noop', 'noopfn', 'todo', 'nested', 'short']) assert.ok(flagged(r, `src/${bad}\\.ts`) || r.stdout.includes(`src/${bad}.ts`), bad);
+  for (const ok of ['real', 'boundary', 'logic', 'reorder', 'index', 'page', 'route']) assert.doesNotMatch(r.stdout, new RegExp(`src/(app/)?(api/)?${ok}\\.tsx?[ \\n(]`), ok);
 });
 
-test('single-impl: one implementation fails, a test double or second implementation passes', () => {
-  const lone = repo({ 'src/i.ts': 'export interface Store { get(): number }\nexport class Mem implements Store { get() { return 1; } }\n' });
+test('single-impl: resolved by module, counts object-literal and factory implementations and test doubles', () => {
+  const store = 'export interface Store { get(): number }\n';
+  const lone = repo({ 'src/i.ts': `${store}export class Mem implements Store { get() { return 1; } }\n` });
   const r = run(lone, '--only', 'single-impl');
   assert.equal(r.status, 1);
   assert.match(r.stdout, /src\/i\.ts#Store/);
-  const double = repo({
-    'src/i.ts': 'export interface Store { get(): number }\nexport class Mem implements Store { get() { return 1; } }\n',
-    'src/i.test.ts': "import type { Store } from './i';\nconst fake = { get: () => 2 } satisfies Store;\nexport default fake;\n",
+  // Same name in two modules: each is judged on its own implementations.
+  const twin = repo({
+    'src/a.ts': store, 'src/b.ts': store,
+    'src/ia.ts': "import type { Store } from './a';\nexport class A implements Store { get() { return 1; } }\n",
+    'src/ib1.ts': "import type { Store } from './b';\nexport class B1 implements Store { get() { return 1; } }\n",
+    'src/ib2.ts': "import type { Store } from './b';\nexport const b2: Store = { get: () => 2 };\n",
   });
-  assert.equal(run(double, '--only', 'single-impl').status, 0);
-  const two = repo({
-    'src/i.ts': 'export interface Store { get(): number }\nexport class A implements Store { get() { return 1; } }\nexport class B implements Store { get() { return 2; } }\n',
-  });
-  assert.equal(run(two, '--only', 'single-impl').status, 0);
-  const abs = repo({ 'src/a.ts': 'export abstract class Base { abstract f(): void }\nexport class Only extends Base { f() {} }\n' });
-  assert.equal(run(abs, '--only', 'single-impl').status, 1);
+  const t = run(twin, '--only', 'single-impl');
+  assert.match(t.stdout, /src\/a\.ts#Store/);
+  assert.doesNotMatch(t.stdout, /src\/b\.ts#Store/);
+  const mk = (extra) => repo({ 'src/i.ts': `${store}export class Mem implements Store { get() { return 1; } }\n`, ...extra });
+  assert.equal(run(mk({ 'src/o.ts': "import type { Store } from './i';\nexport const o = { get: () => 2 } satisfies Store;\n" }), '--only', 'single-impl').status, 0, 'object literal');
+  assert.equal(run(mk({ 'src/f.ts': "import type { Store } from './i';\nexport function make(): Store { return { get: () => 3 }; }\n" }), '--only', 'single-impl').status, 0, 'factory');
+  assert.equal(run(mk({ 'src/i.test.ts': "import type { Store } from './i';\nexport default { get: () => 2 } satisfies Store;\n" }), '--only', 'single-impl').status, 0, 'test double');
+  assert.equal(run(repo({ 'src/a.ts': 'export abstract class Base { abstract f(): void }\nexport class Only extends Base { f() {} }\n' }), '--only', 'single-impl').status, 1);
+});
+
+test('knip adapter ratchets per file and category', () => {
+  const fake = (d, issues) => {
+    fs.writeFileSync(path.join(d, 'fake-knip.mjs'), `console.log(${JSON.stringify(JSON.stringify({ issues }))})`);
+  };
+  const d = repo({ 'src/a.ts': lines(1) }, { knip: true, knipCommand: ['node', 'fake-knip.mjs'] });
+  fake(d, [{ file: 'src/a.ts', exports: [{}, {}], types: [], dependencies: [{}] }]);
+  assert.equal(run(d, '--init').status, 0);
+  assert.deepEqual(baseOf(d).knip, { 'src/a.ts:exports': 2 });
+  assert.equal(run(d, '--only', 'knip').status, 0);
+  fake(d, [{ file: 'src/a.ts', exports: [{}, {}, {}] }]);
+  assert.equal(run(d, '--only', 'knip').status, 1);
+  fake(d, [{ file: 'src/a.ts', exports: [{}, {}] }, { file: 'src/b.ts', files: [{}] }]);
+  assert.equal(run(d, '--only', 'knip').status, 1);
+});
+
+test('jscpd adapter counts the union of clone lines per file, independent of clone order', () => {
+  const d = repo({ 'src/a.ts': lines(1) }, { jscpd: { paths: ['src'] }, jscpdCommand: ['node', 'fake-jscpd.mjs'] });
+  const side = (name, a, b) => ({ name, startLoc: { line: a }, endLoc: { line: b } });
+  const write = (dups) => fs.writeFileSync(path.join(d, 'fake-jscpd.mjs'), `import fs from 'node:fs';import path from 'node:path';
+const out=process.argv[process.argv.indexOf('--output')+1];
+fs.writeFileSync(path.join(out,'jscpd-report.json'),${JSON.stringify(JSON.stringify({ duplicates: dups }))});`);
+  const c1 = { firstFile: side('src/a.ts', 1, 10), secondFile: side('src/b.ts', 5, 14) };
+  const c2 = { firstFile: side('src/a.ts', 6, 12), secondFile: side('src/c.ts', 1, 7) };
+  write([c1, c2]);
+  assert.equal(run(d, '--init').status, 0);
+  assert.deepEqual(baseOf(d).jscpd, { 'src/a.ts': 12, 'src/b.ts': 10, 'src/c.ts': 7 });
+  write([c2, { firstFile: c1.secondFile, secondFile: c1.firstFile }]);
+  assert.equal(run(d, '--only', 'jscpd').status, 0, 'order-independent');
+});
+
+test('--init writes a baseline and exits 0 even with offenders', () => {
+  const d = repo({ 'src/big.ts': lines(600) });
+  assert.equal(run(d, '--init').status, 0);
+  assert.equal(baseOf(d).size['src/big.ts'], 600);
 });
