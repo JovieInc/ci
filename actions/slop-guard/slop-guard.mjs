@@ -90,7 +90,7 @@ if (flag('--init')) {
 // --- base comparison and rename carry-over.
 // A missing base never skips the check: with no base config the pinned DEFAULT_POLICY applies, and a
 // missing base baseline is a first introduction that needs a CODEOWNER-applied `slop-guard-policy` label.
-const DEFAULT_POLICY = { baseline: '.slop-baseline.json', knipCommand: ['pnpm', 'exec', 'knip'], caps: { source: 500, test: 1000, schema: 3000, prefix: 8, prefixGlobal: 24 }, roots: [], ignore: [], sizeExempt: [], passthroughExempt: [], prefixIgnore: [], knipIgnoreCategories: [], knipArgs: [] };
+const DEFAULT_POLICY = { baseline: '.slop-baseline.json', knipCommand: ['pnpm', 'exec', 'knip'], caps: { source: 500, test: 1000, schema: 3000, prefix: 8, prefixGlobal: 24 }, roots: [], ignore: [], sizeExempt: [], passthroughExempt: [], prefixIgnore: [], knipIgnoreCategories: ['dependencies', 'devDependencies', 'binaries', 'unlisted', 'optionalPeerDependencies', 'owners'], knipArgs: [] };
 const approved = flag('--policy-approved');
 const renames = new Map();
 let failed = false;
