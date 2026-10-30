@@ -25,7 +25,7 @@ jobs:
             gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
             f="w-$repo/.github/workflows/company-guards.yml"
             [ -f "$f" ] || { echo "$repo: not wired"; continue; }
-            sed -i -E "s#(JovieInc/ci/\.github/workflows/company-guards\.yml@)[0-9a-f]{40}#\1$SHA#" "$f"
+            sed -i -E "s#(company-guards\.yml@|ci-ref: )[0-9a-f]{40}#\1$SHA#g" "$f"
             git -C "w-$repo" diff --quiet && continue
             git -C "w-$repo" checkout -q -b "compounding/ci-pin-${SHA:0:8}"
             git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qam "chore(ci): bump company guards pin to ${SHA:0:8}"

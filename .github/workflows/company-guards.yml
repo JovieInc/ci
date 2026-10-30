@@ -6,6 +6,11 @@ name: Company Guards
 
 on:
   workflow_call:
+    inputs:
+      ci-ref:
+        description: Full SHA of JovieInc/ci this workflow is pinned to (same SHA as the uses line; drift-checked).
+        required: true
+        type: string
 
 permissions: {}
 
@@ -25,7 +30,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: JovieInc/ci
-          ref: ${{ github.job_workflow_sha }}
+          ref: ${{ inputs.ci-ref }}
           path: .company-ci
           persist-credentials: false
       - name: Run guards
@@ -34,6 +39,6 @@ jobs:
         run: node .company-ci/guards/run.mjs
       - name: Pin drift
         env:
-          CI_PIN: ${{ github.job_workflow_sha }}
+          CI_PIN: ${{ inputs.ci-ref }}
           GITHUB_TOKEN: ${{ github.token }}
         run: node .company-ci/guards/drift.mjs
