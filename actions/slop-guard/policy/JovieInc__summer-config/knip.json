@@ -1,0 +1,13 @@
+{
+  "entry": [
+    "agent/agent.ts",
+    "agent/{tools,channels,schedules,hooks,instructions}/**/*.ts",
+    "agent/{select-identity,runtime-identity,build-stamp,identity-instructions}.ts",
+    "scripts/*.mjs",
+    "evals/**/*.ts",
+    "tests/**/*.test.ts",
+    "tests/setup.ts"
+  ],
+  "project": ["agent/**/*.ts", "evals/**/*.ts"],
+  "ignoreDependencies": ["eve", "vercel", "@fontsource/inter", "jscpd", "knip"]
+}

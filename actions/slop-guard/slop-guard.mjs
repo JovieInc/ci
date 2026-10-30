@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-// Company-wide anti-slop ratchets. Run from a consumer package root:
-//   node slop-guard.mjs [--config .slop-guard.json] [--only a,b] [--base <git sha>] [--update] [--init]
-// Rules: size, prefix, passthrough, single-impl, knip, jscpd. Each is a ratchet over a baseline file:
+// Company-wide anti-slop ratchets. Policy lives only in JovieInc/ci (policy/<owner>__<repo>/policy.json plus
+// knip.json and jscpd.json beside it); a consumer repo owns nothing but its baseline, which can only shrink.
+//   node slop-guard.mjs --policy <policy.json> [--only a,b] [--base <git sha>] [--update] [--init]
+// Rules: size, prefix, passthrough, single-impl, knip, jscpd. Each is a ratchet over the baseline:
 //  - a new offender, or growth beyond the small size budget, fails;
-//  - fixed debt only warns here; CI lowers the baseline with --update (it can never raise an entry);
-//  - with --base, config and baseline are compared to the base revision: any added or raised baseline
-//    entry, loosened cap, new ignore/exempt pattern, or dropped root fails, so --init and hand edits cannot game it.
+//  - fixed or deleted debt is dropped in memory with a warning and never fails;
+//  - with --base the baseline may not gain or raise any entry compared to the base revision; a PR that
+//    introduces the baseline (none at base) is the only time a new baseline is accepted.
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
@@ -16,12 +17,21 @@ import { knip, jscpd, sortKeys } from './external.mjs';
 const args = process.argv.slice(2);
 const flag = (n) => args.includes(n);
 const opt = (n, d) => (args.includes(n) ? args[args.indexOf(n) + 1] : d);
-const cwd = process.cwd();
-const git = (...a) => execFileSync('git', a, { cwd, encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
+const startCwd = process.cwd();
+let cwd = startCwd;
+const git = (...a) => execFileSync('git', a, { cwd: process.cwd(), encoding: 'utf8', maxBuffer: 1 << 28, stdio: ['ignore', 'pipe', 'pipe'] });
 const root = git('rev-parse', '--show-toplevel').trim();
+const policyPath = path.resolve(opt('--policy', ''));
+const config = JSON.parse(fs.readFileSync(policyPath, 'utf8'));
+const policyDir = path.dirname(policyPath);
+process.chdir(path.resolve(root, config.workdir ?? '.'));
+const wd = process.cwd();
 const prefix = git('rev-parse', '--show-prefix').trim();
-const configPath = path.resolve(cwd, opt('--config', '.slop-guard.json'));
-const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+// Repo-local tool configs (.jscpd.json, knip.json, package.json settings) are ignored: ci passes its own.
+const toolConfig = (name) => (fs.existsSync(path.join(policyDir, name)) ? path.join(policyDir, name) : path.join(policyDir, '..', 'default', name));
+config.knipArgs = ['--config', toolConfig('knip.json'), ...(config.knipArgs ?? [])];
+config.jscpdConfig = toolConfig('jscpd.json');
+cwd = wd;
 const baselinePath = path.resolve(cwd, config.baseline ?? '.slop-baseline.json');
 const readJson = (p) => (fs.existsSync(p) ? JSON.parse(fs.readFileSync(p, 'utf8')) : {});
 const baseline = readJson(baselinePath);
@@ -88,22 +98,15 @@ if (flag('--init')) {
 }
 
 // --- base comparison and rename carry-over.
-// A missing base never skips the check: with no base config the pinned DEFAULT_POLICY applies, and a
-// missing base baseline is a first introduction that needs a CODEOWNER-applied `slop-guard-policy` label.
-const DEFAULT_POLICY = { baseline: '.slop-baseline.json', knipCommand: ['pnpm', 'exec', 'knip'], caps: { source: 500, test: 1000, schema: 3000, prefix: 8, prefixGlobal: 24 }, roots: [], ignore: [], sizeExempt: [], passthroughExempt: [], prefixIgnore: [], knipIgnoreCategories: ['dependencies', 'devDependencies', 'binaries', 'unlisted', 'optionalPeerDependencies', 'owners'], knipArgs: [] };
-const approved = flag('--policy-approved');
 const renames = new Map();
 let failed = false;
 const fail = (m) => { failed = true; console.log(`  FAIL ${m}`); };
-const policyFail = (m) => (approved ? console.log(`  note (policy approved) ${m}`) : fail(`${m} (needs a CODEOWNER-applied slop-guard-policy label)`));
-let baseCfg = null, baseLine = null;
+let baseLine = null;
 let renameBase = BASE;
 if (!renameBase) { try { renameBase = git('merge-base', 'HEAD', 'origin/HEAD').trim(); } catch { renameBase = null; } }
 if (BASE) {
   try { git('cat-file', '-e', `${BASE}^{commit}`); } catch { console.error(`slop-guard: base ${BASE} is not available; fetch it first.`); process.exit(2); }
-  const show = (p) => { try { return JSON.parse(git('show', `${BASE}:${prefix}${path.relative(cwd, p).split(path.sep).join('/')}`)); } catch { return null; } };
-  baseCfg = show(configPath);
-  baseLine = show(baselinePath);
+  try { baseLine = JSON.parse(git('show', `${BASE}:${prefix}${path.relative(cwd, baselinePath).split(path.sep).join('/')}`)); } catch { baseLine = null; }
 }
 if (renameBase) {
   for (const l of git('diff', '-M', '--name-status', renameBase).split('\n')) {
@@ -116,32 +119,8 @@ const migrate = (obj) => Object.fromEntries(Object.entries(obj ?? {}).map(([k, v
   const p = keyPath(k), to = renames.get(p);
   return [to ? to + k.slice(p.length) : k, v];
 }));
-if (BASE) {
-  const ref = baseCfg ?? DEFAULT_POLICY;
-  console.log(`[config] compared to ${baseCfg ? 'base' : 'pinned default policy (base has no config)'}`);
-  const eq = (a, b) => JSON.stringify(a) === JSON.stringify(b);
-  const cf = baseCfg ? fail : policyFail; // introduction: the whole config is a CODEOWNER-approved event
-  const capsNow = { ...DEFAULT_POLICY.caps, ...config.caps }, capsRef = { ...DEFAULT_POLICY.caps, ...ref.caps };
-  for (const k of Object.keys(capsNow)) if (capsNow[k] > capsRef[k]) cf(`cap ${k} raised ${capsRef[k]} -> ${capsNow[k]}`);
-  for (const k of ['ignore', 'sizeExempt', 'passthroughExempt', 'prefixIgnore', 'knipIgnoreCategories', 'knipArgs']) {
-    const had = new Set(ref[k] ?? []);
-    for (const x of config[k] ?? []) if (!had.has(x)) cf(`${k} gained "${x}"`);
-  }
-  for (const x of ref.roots ?? []) if (!(config.roots ?? []).includes(x)) cf(`root "${x}" dropped`);
-  for (const k of ['knip', 'jscpd']) if (config[k] === false && ref[k] !== false) (baseCfg ? fail : policyFail)(`${k} disabled`);
-  if ((config.testPattern ?? '') !== (ref.testPattern ?? '')) cf('testPattern changed');
-  const bj = ref.jscpd ?? {}, hj = config.jscpd ?? {};
-  for (const k of ['minLines', 'minTokens']) if (hj[k] !== undefined && hj[k] > (bj[k] ?? 0)) cf(`jscpd.${k} raised`);
-  for (const x of hj.ignore ?? []) if (!(bj.ignore ?? []).includes(x)) cf(`jscpd.ignore gained "${x}"`);
-  // Policy fields are locked: any change needs a CODEOWNER-applied label.
-  const polRef = { baseline: ref.baseline ?? DEFAULT_POLICY.baseline, knipCommand: ref.knipCommand ?? DEFAULT_POLICY.knipCommand, jscpdPaths: ref.jscpd?.paths ?? ref.roots, tsconfigDir: ref.tsconfigDir ?? '.', jscpdCommand: ref.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'] };
-  const polNow = { baseline: config.baseline ?? DEFAULT_POLICY.baseline, knipCommand: config.knipCommand ?? DEFAULT_POLICY.knipCommand, jscpdPaths: config.jscpd?.paths ?? config.roots, tsconfigDir: config.tsconfigDir ?? '.', jscpdCommand: config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'] };
-  for (const k of Object.keys(polNow)) if (!eq(polNow[k], polRef[k])) policyFail(`policy field ${k} changed`);
-  if (!baseCfg) for (const x of config.roots ?? []) if (!ref.roots.includes(x)) policyFail(`introducing root "${x}"`);
-}
-if (BASE && !baseLine) policyFail('baseline introduced (no baseline at base)');
 if (baseLine) {
-  console.log('[baseline] compared to base');
+  console.log('[baseline] compared to base (it may only shrink)');
   for (const [rule, entries] of Object.entries(baseline)) {
     const was = migrate(baseLine[rule]);
     for (const [k, v] of Object.entries(migrate(entries))) {
@@ -149,17 +128,17 @@ if (baseLine) {
       else if (v > was[k]) fail(`${rule}: baseline raised ${k} ${was[k]} -> ${v}`);
     }
   }
+} else if (BASE) {
+  console.log('[baseline] none at base: first introduction, accepted once');
 }
-// Baseline keys must follow renames and deletions in the same PR (otherwise main breaks on the next PR).
-if (!flag('--update')) {
-  for (const [rule, entries] of Object.entries(baseline)) {
-    if (rule === 'prefix') continue;
-    for (const k of Object.keys(entries)) {
-      const p = keyPath(k);
-      if (renames.has(p)) fail(`${rule}: baseline still references renamed path ${p} (now ${renames.get(p)}); run --update`);
-      else if (!fs.existsSync(path.resolve(cwd, p)) && !fs.existsSync(path.resolve(root, p))) fail(`${rule}: baseline references missing path ${p}; run --update`);
-    }
-  }
+
+function historyOldPath(p) {
+  try {
+    const out = git('log', '--follow', '--diff-filter=R', '--name-status', '--format=', '-n', '1', '--', p);
+    const m = /^R\d+\t([^\t]+)\t/m.exec(out);
+    if (!m) return null;
+    return m[1].startsWith(prefix) ? m[1].slice(prefix.length) : m[1];
+  } catch { return null; }
 }
 
 // --- ratchet.
@@ -167,6 +146,15 @@ const budget = (rule, v) => (rule === 'size' ? Math.min(Math.ceil(v * 0.05), 20)
 const next = { ...baseline };
 for (const [rule, cur] of Object.entries(current)) {
   const base = migrate(baseline[rule]);
+  // A moved file that is still baselined under its old path (rename merged earlier) keeps its entry.
+  let lookups = 0;
+  for (const k of Object.keys(cur)) {
+    if (k in base || rule === 'prefix' || lookups >= 100) continue;
+    lookups++;
+    const oldPath = historyOldPath(keyPath(k));
+    const oldKey = oldPath && oldPath + k.slice(keyPath(k).length);
+    if (oldKey && oldKey in base && !(oldKey in cur)) { base[k] = base[oldKey]; delete base[oldKey]; }
+  }
   const grown = [], fresh = [], shrunk = [];
   for (const [k, v] of Object.entries(cur)) {
     if (!(k in base)) fresh.push(`${k} (${v})`);
@@ -190,6 +178,7 @@ for (const [rule, cur] of Object.entries(current)) {
 }
 if (flag('--update') && !failed) {
   const body = JSON.stringify(next, null, 2) + '\n';
+  if (flag('--print-baseline-path')) console.log(`baseline-file=${baselinePath}`);
   if (!fs.existsSync(baselinePath) || fs.readFileSync(baselinePath, 'utf8') !== body) {
     fs.writeFileSync(baselinePath, body);
     console.log(`baseline lowered: ${path.relative(cwd, baselinePath)}`);

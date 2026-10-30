@@ -19,7 +19,8 @@ function repo(files, config = {}) {
   fs.symlinkSync(tsDir, path.join(dir, 'node_modules', 'typescript'));
   fs.writeFileSync(path.join(dir, '.gitignore'), 'node_modules\nbuild-out\n');
   fs.writeFileSync(path.join(dir, 'package.json'), '{}');
-  fs.writeFileSync(path.join(dir, '.slop-guard.json'), JSON.stringify({ roots: ['src'], knip: false, jscpd: false, ...config }));
+  fs.mkdirSync(`${dir}-policy`);
+  fs.writeFileSync(`${dir}-policy/policy.json`, JSON.stringify({ roots: ['src'], knip: false, jscpd: false, ...config }));
   put(dir, files);
   return dir;
 }
@@ -29,7 +30,7 @@ function put(dir, files) {
     fs.writeFileSync(path.join(dir, f), c);
   }
 }
-const run = (dir, ...a) => spawnSync('node', [SCRIPT, ...a], { cwd: dir, encoding: 'utf8' });
+const run = (dir, ...a) => spawnSync('node', [SCRIPT, '--policy', `${dir}-policy/policy.json`, ...a], { cwd: dir, encoding: 'utf8' });
 const commit = (d, m = 'c') => { git(d, 'add', '-A'); git(d, 'commit', '-qm', m); return git(d, 'rev-parse', 'HEAD').trim(); };
 const lines = (n) => 'export const x = 1;\n'.repeat(n);
 const baseOf = (d) => JSON.parse(fs.readFileSync(path.join(d, '.slop-baseline.json')));
@@ -63,83 +64,70 @@ test('ratchet: growth budget, shrink warns, update only lowers', () => {
   assert.deepEqual(baseOf(d).size, {});
 });
 
-test('base comparison: raised entries, loosened config and dropped roots fail; shrinking passes', () => {
-  const d = repo({ 'src/big.ts': lines(520), 'src/other.ts': lines(600) }, { caps: { source: 500 } });
-  run(d, '--init');
-  const base = commit(d);
-  assert.equal(run(d, '--base', base).status, 0);
-  const cfg = () => JSON.parse(fs.readFileSync(path.join(d, '.slop-guard.json')));
-  const writeCfg = (c) => fs.writeFileSync(path.join(d, '.slop-guard.json'), JSON.stringify(c));
-  const orig = cfg();
-  for (const [name, mutate] of [
-    ['raised cap', (c) => ({ ...c, caps: { source: 900 } })],
-    ['ignore added', (c) => ({ ...c, ignore: ['src/big'] })],
-    ['dropped root', (c) => ({ ...c, roots: [] })],
-    ['exempt added', (c) => ({ ...c, sizeExempt: ['big'] })],
-  ]) {
-    writeCfg(mutate(orig));
-    assert.equal(run(d, '--base', base).status, 1, name);
-  }
-  writeCfg(orig);
-  const b = baseOf(d); b.size['src/big.ts'] = 525; fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
-  assert.equal(run(d, '--base', base).status, 1, 'raised baseline');
-  b.size['src/big.ts'] = 520; b.size['src/new.ts'] = 999; fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
-  assert.equal(run(d, '--base', base).status, 1, 'added baseline entry');
-  fs.writeFileSync(path.join(d, 'src/big.ts'), lines(100)); run(d, '--update');
-  assert.equal(run(d, '--base', base).status, 0, 'shrunk baseline passes');
+test('baseline vs base: gained or raised entries fail, shrinking passes, first introduction is accepted', () => {
+  const d = repo({ 'src/big.ts': lines(520), 'src/other.ts': lines(600) });
+  assert.equal(run(d, '--init').status, 0);
+  const none = commit(d); // baseline introduced in this very commit: nothing at base before it
+  assert.equal(run(d, '--base', git(d, 'rev-parse', 'HEAD~0').trim()).status, 0);
+  fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify({ size: { 'src/big.ts': 520 } }));
+  const base = commit(d, 'baseline with one entry');
+  const b = baseOf(d);
+  b.size['src/big.ts'] = 525;
+  fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
+  assert.equal(run(d, '--base', base).status, 1, 'raised entry');
+  b.size['src/big.ts'] = 520; b.size['src/other.ts'] = 600;
+  fs.writeFileSync(path.join(d, '.slop-baseline.json'), JSON.stringify(b));
+  const r = run(d, '--base', base);
+  assert.equal(r.status, 1, 'added entry hides a new offender');
+  assert.match(r.stdout, /baseline gained src\/other\.ts/);
+  assert.ok(none);
 });
 
-test('renames: the baseline must follow in the same PR; --update rewrites keys', () => {
+test('a base commit that cannot be read is an error, never a skip', () => {
+  const d = repo({ 'src/ok.ts': lines(2) });
+  commit(d);
+  assert.equal(run(d, '--base', '0'.repeat(40)).status, 2);
+});
+
+test('renames carry the baseline entry in the same PR and from history on main', () => {
   const d = repo({ 'src/big.ts': lines(520) });
   run(d, '--init');
   const base = commit(d);
   git(d, 'mv', 'src/big.ts', 'src/moved.ts');
   commit(d, 'rename');
-  const stale = run(d, '--base', base, '--only', 'size');
-  assert.equal(stale.status, 1);
-  assert.match(stale.stdout, /still references renamed path src\/big\.ts/);
+  assert.equal(run(d, '--base', base, '--only', 'size').status, 0, 'rename inside the PR');
+  assert.equal(run(d, '--only', 'size').status, 0, 'rename found in history');
   assert.equal(run(d, '--base', base, '--only', 'size', '--update').status, 0);
   assert.deepEqual(Object.keys(baseOf(d).size), ['src/moved.ts']);
-  assert.equal(run(d, '--base', base, '--only', 'size').status, 0);
 });
 
-test('baseline entries for deleted paths fail until removed', () => {
-  const d = repo({ 'src/big.ts': lines(520) });
+test('deleted or fixed entries only warn and are dropped', () => {
+  const d = repo({ 'src/big.ts': lines(520), 'src/gone.ts': lines(520) });
   run(d, '--init');
-  fs.rmSync(path.join(d, 'src/big.ts'));
-  assert.equal(run(d, '--only', 'size').status, 1);
+  fs.rmSync(path.join(d, 'src/gone.ts'));
+  const r = run(d, '--only', 'size');
+  assert.equal(r.status, 0);
+  assert.match(r.stdout, /FIXED/);
   assert.equal(run(d, '--only', 'size', '--update').status, 0);
-  assert.equal(run(d, '--only', 'size').status, 0);
+  assert.deepEqual(Object.keys(baseOf(d).size), ['src/big.ts']);
 });
 
-test('a base without config or baseline never skips: pinned defaults apply and introduction needs the policy label', () => {
-  const d = repo({ 'src/ok.ts': lines(2) });
-  fs.renameSync(path.join(d, '.slop-guard.json'), path.join(d, 'cfg.tmp'));
-  const base = commit(d);
-  fs.renameSync(path.join(d, 'cfg.tmp'), path.join(d, '.slop-guard.json'));
-  run(d, '--init');
-  commit(d, 'introduce');
-  const r = run(d, '--base', base);
-  assert.equal(r.status, 1);
-  assert.match(r.stdout, /baseline introduced/);
-  assert.equal(run(d, '--base', base, '--policy-approved').status, 0);
-  // Once a config exists at the base, loosened caps fail even with the policy label: only policy fields are labelable.
-  const base2 = git(d, 'rev-parse', 'HEAD').trim();
-  const cfg = JSON.parse(fs.readFileSync(path.join(d, '.slop-guard.json')));
-  fs.writeFileSync(path.join(d, '.slop-guard.json'), JSON.stringify({ ...cfg, caps: { source: 5000 } }));
-  assert.equal(run(d, '--base', base2, '--policy-approved').status, 1);
-});
-
-test('policy fields (baseline path, knipCommand, tsconfig) are locked to the base unless approved', () => {
-  const d = repo({ 'src/ok.ts': lines(2) });
-  run(d, '--init');
-  const base = commit(d);
-  const cfg = JSON.parse(fs.readFileSync(path.join(d, '.slop-guard.json')));
-  for (const change of [{ baseline: 'other.json' }, { knipCommand: ['node', 'x.mjs'] }, { tsconfigDir: 'src' }]) {
-    fs.writeFileSync(path.join(d, '.slop-guard.json'), JSON.stringify({ ...cfg, ...change }));
-    fs.writeFileSync(path.join(d, 'other.json'), fs.readFileSync(path.join(d, '.slop-baseline.json')));
-    assert.equal(run(d, '--base', base).status, 1, JSON.stringify(change));
-    assert.equal(run(d, '--base', base, '--policy-approved').status, 0, `${JSON.stringify(change)} approved`);
+test('tool configs come from ci: repo-local .jscpd.json and knip settings are never passed', () => {
+  const d = repo({ 'src/a.ts': lines(1), '.jscpd.json': '{"threshold": 100}', 'knip.json': '{"entry": ["src/**"]}' }, { knip: true, jscpd: { paths: ['src'] }, knipCommand: ['node', 'argv.mjs', 'knip'], jscpdCommand: ['node', 'argv.mjs', 'jscpd'] });
+  fs.mkdirSync(path.join(`${d}-policy`, '..', 'default'), { recursive: true });
+  fs.writeFileSync(path.join(d, 'argv.mjs'), `import fs from 'node:fs';
+const out = process.argv.includes('--output') ? process.argv[process.argv.indexOf('--output') + 1] : null;
+fs.appendFileSync(process.env.ARGV_LOG, JSON.stringify(process.argv.slice(2)) + '\\n');
+if (out) fs.writeFileSync(out + '/jscpd-report.json', '{"duplicates":[]}'); else console.log('{"issues":[]}');`);
+  const log = `${d}-argv.log`;
+  const r = spawnSync('node', [SCRIPT, '--policy', `${d}-policy/policy.json`, '--init'], { cwd: d, encoding: 'utf8', env: { ...process.env, ARGV_LOG: log } });
+  assert.equal(r.status, 0, r.stderr);
+  const calls = fs.readFileSync(log, 'utf8').trim().split('\n').map((l) => JSON.parse(l));
+  for (const c of calls) {
+    const i = c.indexOf('--config');
+    assert.ok(i > -1, 'explicit --config');
+    assert.ok(path.resolve(c[i + 1]).startsWith(path.dirname(`${d}-policy`)), `config ${c[i + 1]} is outside the repo`);
+    assert.ok(!path.resolve(c[i + 1]).startsWith(d + path.sep));
   }
 });
 

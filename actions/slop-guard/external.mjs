@@ -26,7 +26,7 @@ export function knip(config, cwd) {
 export function jscpd(config, cwd, root) {
   const j = config.jscpd ?? {};
   const dir = fs.mkdtempSync(path.join(process.env.RUNNER_TEMP ?? os.tmpdir(), 'jscpd-'));
-  run(config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'], [...(j.paths ?? config.roots), '--reporters', 'json', '--output', dir, '--silent', '--absolute', '--min-lines', String(j.minLines ?? 8), '--min-tokens', String(j.minTokens ?? 70), '--ignore', (j.ignore ?? ['**/node_modules/**', '**/*.test.*', '**/tests/**']).join(',')], cwd);
+  run(config.jscpdCommand ?? ['pnpm', 'exec', 'jscpd'], [...(j.paths ?? config.roots), '--config', config.jscpdConfig, '--reporters', 'json', '--output', dir, '--silent', '--absolute', '--min-lines', String(j.minLines ?? 8), '--min-tokens', String(j.minTokens ?? 70), '--ignore', (j.ignore ?? ['**/node_modules/**', '**/*.test.*', '**/tests/**']).join(',')], cwd);
   const file = path.join(dir, 'jscpd-report.json');
   if (!fs.existsSync(file)) throw new Error('slop-guard: jscpd produced no report (is jscpd installed for this repo?)');
   const lines = new Map();
