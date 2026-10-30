@@ -64,3 +64,9 @@ The [bootstrap](templates/jovie-ci-release-prevention/README.md) installs a real
 consumer scaffold with an explicitly selected full commit pin. Its check validates
 metadata and file references, not regression execution or prevention coverage.
 Adopt and qualify independently under JOV-6555; preserve existing required gates.
+
+## Security ratchet
+
+`actions/security-ratchet` (pin a full SHA): `mode: pr` blocks a PR that adds a critical/high code-scanning alert
+the base lacks; `mode: baseline` fails when open alerts exceed `.github/security-baseline.json`, which only shrinks.
+Unreadable sources are recorded blind, never red. Pair with `secret-scan.yml` and dependency-review (`fail-on-severity: high`).
