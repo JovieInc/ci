@@ -1,0 +1,7 @@
+{
+  "schema": "company-mention-allowlist/v1",
+  "note": "Only these @logins may appear in agent-written GitHub text. Add a person only when they are a real org member or collaborator.",
+  "people": ["itstimwhite"],
+  "bots": ["dependabot", "dependabot[bot]", "github-actions", "github-actions[bot]", "copilot", "coderabbitai", "coderabbitai[bot]", "graphite-app", "graphite-app[bot]", "linear", "linear[bot]", "sentry-io", "sentry-io[bot]", "vercel", "vercel[bot]", "codecov", "sonarcloud"],
+  "rateLimit": { "perPersonPerHourMax": 1 }
+}

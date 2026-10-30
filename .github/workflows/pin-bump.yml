@@ -1,0 +1,35 @@
+# When canon/ or guards/ change on main, open a pin-bump PR in every consumer.
+# Needs secret COMPANY_BOT_TOKEN (PR write on consumers); without it the job is a no-op.
+name: Pin Bump
+on:
+  push:
+    branches: [main]
+    paths: ['canon/**', 'guards/**', '.github/workflows/company-guards.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  bump:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ secrets.COMPANY_BOT_TOKEN }}
+      SHA: ${{ github.sha }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Open a bump PR per consumer
+        run: |
+          [ -n "$GH_TOKEN" ] || { echo "COMPANY_BOT_TOKEN not set; skipping"; exit 0; }
+          for repo in $(node -e 'console.log(require("./canon/consumers.json").repos.join(" "))'); do
+            gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
+            f="w-$repo/.github/workflows/company-guards.yml"
+            [ -f "$f" ] || { echo "$repo: not wired"; continue; }
+            sed -i -E "s#(company-guards\.yml@|ci-ref: )[0-9a-f]{40}#\1$SHA#g" "$f"
+            git -C "w-$repo" diff --quiet && continue
+            git -C "w-$repo" checkout -q -b "compounding/ci-pin-${SHA:0:8}"
+            git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qam "chore(ci): bump company guards pin to ${SHA:0:8}"
+            git -C "w-$repo" push -q origin HEAD
+            gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label compounding \
+              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA."
+          done

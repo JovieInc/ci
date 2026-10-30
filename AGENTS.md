@@ -15,3 +15,5 @@ this task does not certify their planned workflows as implemented.
 See [source parity](docs/DOCUMENTATION.md) and the generated
 [source map](docs/REPOSITORY_SOURCES.md). Shared policy is pinned; local
 manifest, build, test and release instructions remain owned by this repository.
+
+Company canon: JovieInc/ci canon/COMPANY.md (applies in full; this file is the repo delta).
