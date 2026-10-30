@@ -45,3 +45,12 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   const types = f.map((x) => `${x.name}:${x.type}`);
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
+
+import { validate as validateTooling, diff as diffTooling } from '../scripts/tooling-drift.mjs';
+const tooling = JSON.parse(readFileSync(new URL('../canon/tooling.json', import.meta.url)));
+test('tooling: registry valid; drift flags unregistered and missing', () => {
+  assert.deepEqual(validateTooling(tooling), []);
+  const e = tooling.entries.find((x) => x.kind === 'mcp' && x.status === 'active');
+  assert.deepEqual(diffTooling(tooling, { mcp: ['brand-new'] }).unregistered, ['mcp:brand-new']);
+  assert.ok(diffTooling(tooling, { mcp: [] }).missing.includes(e.id));
+});
