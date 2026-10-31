@@ -38,5 +38,5 @@ jobs:
             [ -n "$existing" ] && gh issue close "$existing" -c "Clean scan."
             exit 0
           fi
-          body=$(printf 'Public app scan failed. Policy: canon/PUBLIC-APP-CERTIFICATION.md\n\n```\n%s\n```\n' "$(cat scan.txt)")
+          body=$(printf 'Public app scan failed. Policy: canon/PUBLIC-APP-CERTIFICATION.md\n\n~~~\n%s\n~~~\n' "$(cat scan.txt)")
           if [ -n "$existing" ]; then gh issue edit "$existing" --body "$body"; else gh issue create --label public-app-cert --title "public-app-cert: scan failing" --body "$body"; fi
