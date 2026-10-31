@@ -127,4 +127,16 @@ test('scaffold: a repo with several apps gets one config per app at its registry
   for (const f of ['jovie-web.json', 'jovie-ios.json', 'should-i-make.json']) {
     assert.equal(JSON.parse(readFileSync(join(dir, 'certification', f), 'utf8')).schema, 'company.public-app-cert/v1');
   }
+  const ios = JSON.parse(readFileSync(join(dir, 'certification/jovie-ios.json'), 'utf8'));
+  assert.equal(ios.buyer.personas, 'certification/jovie-ios-personas.json');
+  assert.equal(ios.goldenPath.flows.web, 'certification/flows/jovie-ios.mjs');
+  readFileSync(join(dir, 'certification/jovie-ios-personas.json'));
+});
+
+test('scaffold: an app that is already configured only gets repo-level files', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'pubapp-'));
+  mkdirSync(join(dir, 'certification'), { recursive: true });
+  writeFileSync(join(dir, 'certification/app.json'), '{}');
+  const rels = plan({ registry, repo: 'JovieInc/LogYourBody', target: dir, sha: SHA }).map((w) => w.rel);
+  assert.deepEqual(rels, ['.github/workflows/public-app-certification.yml']);
 });

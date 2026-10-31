@@ -27,13 +27,26 @@ export function plan({ registry, repo, app: only, target, sha }) {
   const writes = [];
   for (const app of apps) {
     const vars = { APP_ID: app.id, STAGE: app.stage, DATA_CLASS: app.dataClass, CI_SHA: sha };
+    // An app whose config exists is set up; only repo-level files (the workflow) are still added.
+    const configured = existsSync(join(target, app.config));
+    // Repos with several apps namespace every per-app file (<app>-personas.json, flows/<app>.mjs).
+    const single = app.config === 'certification/app.json';
+    const renames = single ? {} : {
+      'certification/personas.json': `certification/${app.id}-personas.json`,
+      'certification/calibration.json': `certification/${app.id}-calibration.json`,
+      'certification/tracker-registry.json': `certification/${app.id}-tracker-registry.json`,
+      'certification/flows/web.mjs': `certification/flows/${app.id}.mjs`,
+    };
     for (const src of walk(SKELETON)) {
       let rel = relative(SKELETON, src);
-      // Repos with several apps keep one config per app at the registry path; shared files stay shared.
+      const perApp = rel.startsWith('certification/');
+      if (perApp && configured) continue;
       if (rel === 'certification/app.json') rel = app.config;
+      rel = renames[rel] ?? rel;
       const dest = join(target, rel);
       if (existsSync(dest) || writes.some((w) => w.dest === dest)) continue;
-      const body = readFileSync(src, 'utf8').replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`);
+      let body = readFileSync(src, 'utf8').replace(/\{\{(\w+)\}\}/g, (_, k) => vars[k] ?? `{{${k}}}`);
+      for (const [from, to] of Object.entries(renames)) body = body.split(from).join(to);
       writes.push({ app: app.id, rel, dest, body });
     }
   }
