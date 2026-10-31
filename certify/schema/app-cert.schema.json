@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/JovieInc/ci/certify/schema/app-cert.schema.json",
+  "title": "company.public-app-cert/v1",
+  "description": "Per-app certification config. Enforced by certify/config.mjs (a TODO anywhere is an error). Policy: canon/PUBLIC-APP-CERTIFICATION.md.",
+  "type": "object",
+  "required": ["schema", "app", "stage", "dataClass", "goldenPath", "paidOutcome", "buyer", "privacy", "customerVoice", "waste", "capacity"],
+  "properties": {
+    "schema": { "const": "company.public-app-cert/v1" },
+    "app": { "type": "string", "description": "Registry id in canon/public-apps.json" },
+    "stage": { "enum": ["prelaunch", "public", "dormant"] },
+    "dataClass": { "enum": ["standard", "health"] },
+    "goldenPath": {
+      "type": "object",
+      "required": ["stages", "flows", "accounts"],
+      "properties": {
+        "stages": {
+          "type": "array",
+          "minItems": 5,
+          "items": {
+            "type": "object",
+            "required": ["id", "kind", "oracle"],
+            "properties": {
+              "id": { "type": "string" },
+              "kind": { "enum": ["entry", "signup", "onboarding", "first-value", "paid-conversion", "retention"] },
+              "surface": { "type": "string" },
+              "oracle": { "type": "string", "description": "Semantic outcome the frame judge must see. Never presence alone." }
+            }
+          }
+        },
+        "flows": { "type": "object", "additionalProperties": { "type": "string" } },
+        "accounts": {
+          "type": "object",
+          "required": ["policy"],
+          "properties": {
+            "policy": { "const": "canary-only" },
+            "source": { "type": "string", "description": "Where canary credentials come from (e.g. doppler:<project>/<config>). Never in git." }
+          }
+        }
+      }
+    },
+    "paidOutcome": {
+      "type": "object",
+      "required": ["plan", "price", "currency", "interval", "priceSource", "freeAlternative"],
+      "properties": {
+        "plan": { "type": "string" },
+        "price": { "type": "number" },
+        "currency": { "type": "string" },
+        "interval": { "enum": ["month", "year", "week", "once"] },
+        "trialDays": { "type": "integer" },
+        "priceSource": { "type": "string" },
+        "pricePattern": { "type": "string", "description": "Regex with one capture group that reads the live price from priceSource" },
+        "freeAlternative": { "type": "string" }
+      }
+    },
+    "buyer": {
+      "type": "object",
+      "required": ["personas", "calibration"],
+      "properties": {
+        "personas": { "type": "string" },
+        "calibration": { "type": "string" },
+        "contaminationMarkers": { "type": "array", "items": { "type": "string" } },
+        "privatePersonaDir": { "type": "string" }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": ["profile", "registry", "crawl", "policyUrl"],
+      "properties": {
+        "profile": { "enum": ["standard", "health"] },
+        "registry": { "type": "string" },
+        "crawl": { "type": "array", "items": { "type": "object", "required": ["url"], "properties": { "url": { "type": "string" }, "input": { "type": "boolean" }, "health": { "type": "boolean" } } } },
+        "policyUrl": { "type": "string" },
+        "healthPolicyUrl": { "type": "string" },
+        "counselSignoff": { "type": ["string", "null"], "description": "Reference to a counsel sign-off; required before any pixel/replay on a health surface" }
+      }
+    },
+    "customerVoice": {
+      "type": "object",
+      "required": ["channels", "approval"],
+      "properties": {
+        "channels": { "type": "array", "items": { "type": "object", "required": ["id", "kind", "route"] } },
+        "approval": { "const": "tim" },
+        "sink": { "type": "string", "description": "Summer customer-voice endpoint (env var name, never the secret)" }
+      }
+    },
+    "waste": { "type": "object", "required": ["appId"] },
+    "capacity": { "type": "object", "required": ["appId"] }
+  }
+}
