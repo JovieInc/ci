@@ -5,6 +5,7 @@
     {"id": "size-500", "owner": "ci", "mode": "ratchet", "source": "guards/size.mjs"},
     {"id": "agents-pointer", "owner": "ci", "mode": "enforce", "source": "guards/run.mjs"},
     {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
-    {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"}
+    {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"},
+    {"id": "tracker-registry", "owner": "summer", "mode": "ratchet", "source": "guards/plugins/tracker-registry.mjs"}
   ]
 }
