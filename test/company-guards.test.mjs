@@ -45,3 +45,46 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   const types = f.map((x) => `${x.name}:${x.type}`);
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
+
+import { scanText, compare as vvCompare, isScannable, run as vacuousRun, name as vacuousName } from '../guards/plugins/vacuous-verdict.mjs';
+const guardsReg = JSON.parse(readFileSync(new URL('../canon/guards.json', import.meta.url)));
+
+test('vacuous-verdict: red before green on the real false-green shapes', () => {
+  // Deliberate-red fixtures: Jovie ship-verify fold and prod-cert runCheck default.
+  const bad = [
+    "status: checks.every(check => check.status !== 'failed') ? 'passed' : 'failed',",
+    "passed: checks.every((item) => item.status != 'fail'),",
+    "const status = outcome?.status ?? 'passed';",
+    "return result.state || 'ok';",
+  ];
+  for (const line of bad) assert.equal(scanText(line).length, 1, line);
+  // Strict folds and fail-closed defaults stay green.
+  const good = [
+    "const ok = checks.length > 0 && checks.every((c) => c.status === 'passed');",
+    "const status = outcome?.status ?? 'blocked';",
+    "if (checks.some((c) => c.status === 'failed')) return 'failed';",
+    "const label = name ?? 'unnamed';",
+    "summary: outcome?.summary ?? 'ok',",
+    "console.log(`quality: ${quality.output || 'ok'}`);",
+  ];
+  for (const line of good) assert.equal(scanText(line).length, 0, line);
+});
+test('vacuous-verdict: test files exempt, source scanned', () => {
+  assert.equal(isScannable('scripts/ship-verify.mjs'), true);
+  assert.equal(isScannable('apps/web/lib/seo/page-certification.ts'), true);
+  for (const p of ['a/__tests__/x.mjs', 'x.test.ts', 'tests/e2e/a.spec.ts', 'node_modules/x/y.js', 'README.md']) {
+    assert.equal(isScannable(p), false, p);
+  }
+});
+test('vacuous-verdict: ratchet fails new or more sites, baseline ok, shrink ok', () => {
+  const cur = { 'a.mjs': [{ rule: 'fold-not-failed', line: 3 }] };
+  assert.equal(vvCompare(cur, {}).length, 1);
+  assert.equal(vvCompare(cur, { 'a.mjs': 1 }).length, 0);
+  assert.equal(vvCompare(cur, { 'a.mjs': 2 }).length, 0);
+  assert.equal(vvCompare({ 'a.mjs': [{}, {}] }, { 'a.mjs': 1 }).length, 1);
+});
+test('vacuous-verdict: run scans given files and is registered in shadow', async () => {
+  const r = await vacuousRun({ cwd: new URL('..', import.meta.url).pathname, files: ['guards/plugins/vacuous-verdict.mjs', 'guards/run.mjs'] });
+  assert.deepEqual(r.fails, []);
+  assert.equal(guardsReg.guards.find((g) => g.id === vacuousName)?.mode, 'shadow');
+});
