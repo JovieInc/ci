@@ -23,6 +23,10 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
 
 ## Agent rules (all repos)
 
+- Fleet authority: who can direct agents and what still needs Tim is in
+  `canon/FLEET-AUTHORITY.md` (applies in full). Agents never ask Tim to approve
+  work directed by authenticated `summer` or `claude`, except the reserved list.
+
 - Single source of truth: every fact has one canonical source; copies fail lint.
   Before creating a repo, Vercel project, domain, Doppler project or worker, look
   it up in `canon/resources.json`; `guards/resources.mjs can-create` refuses when
