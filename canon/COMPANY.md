@@ -43,6 +43,23 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
   layer, a durable guard, and before/after numbers in the wins store. A standing
   share of fleet capacity ships waste fixes every day.
 
+## Verification: verify the outcome, not the action
+
+A check that confirms something happened (a 200, a visible element, exit 0, a
+non-empty reply) without confirming it was the right thing is false green
+(Jovie JOV-9625: the golden path certified a chat reply that was a quota wall).
+Every gate, canary, certification step and agent verify step:
+
+- asserts the semantic outcome with an oracle (this artist, a real release, the
+  value the probe asked for), never presence alone;
+- treats error, quota, unavailable, empty and placeholder content as failure,
+  including a 200 with an error body (Jovie `scripts/lib/outcome-verifier.mjs`);
+- ships red before green: a negative control (known-bad input or seeded bug)
+  proves the check fails before its green is trusted;
+- folds strictly: pass needs at least one check and every check passed; no
+  checks, skipped, blocked or a missing result is never green
+  (`guards/plugins/vacuous-verdict.mjs`).
+
 ## Architecture and anti-slop (ratchets)
 
 - File size: no source file over 500 lines; baselined files may not grow
