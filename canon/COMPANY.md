@@ -33,6 +33,15 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
 - Never delete or archive a resource on your own; destructive steps need Tim's yes.
 - Never `--no-verify`, never stash, never run git in a human's main checkout.
 - Fix red CI; do not skip it. Machines review code, humans review taste.
+- Waste is continuously detected and fixed. Waste is money, API calls, tokens, CI
+  minutes, queue rework, agent time, Tim's attention, notifications, storage, idle
+  compute and tech debt. Tech debt is waste: no quarterly paydowns. Every waste
+  class is normalised to an outcome (per active user, per merged PR) in the
+  product repo's waste registry (Jovie `ops/registry/waste.json`), so anomalies show
+  while absolute numbers are small. Each detection becomes a tracked fix with an
+  owner, a generalization sweep (other apps, ops, agents), a fix at the highest
+  layer, a durable guard, and before/after numbers in the wins store. A standing
+  share of fleet capacity ships waste fixes every day.
 
 ## Architecture and anti-slop (ratchets)
 
