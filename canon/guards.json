@@ -6,6 +6,7 @@
     {"id": "agents-pointer", "owner": "ci", "mode": "enforce", "source": "guards/run.mjs"},
     {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
     {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"},
-    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"}
+    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
+    {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"}
   ]
 }

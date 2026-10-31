@@ -88,3 +88,34 @@ test('vacuous-verdict: run scans given files and is registered in shadow', async
   assert.deepEqual(r.fails, []);
   assert.equal(guardsReg.guards.find((g) => g.id === vacuousName)?.mode, 'shadow');
 });
+
+import { scanSites, inlineRegistration, evaluate as srEvaluate, run as srRun, name as srName } from '../guards/plugins/schedule-registration.mjs';
+
+const WHY = 'The provider sends no webhook for this state.';
+test('schedule-registration: finds every schedule shape', () => {
+  assert.equal(scanSites('.github/workflows/a.yml', "on:\n  schedule:\n    - cron: '*/5 * * * *'\n")[0].key, 'github-cron:.github/workflows/a.yml');
+  assert.equal(scanSites('workers/x/wrangler.toml', '[triggers]\ncrons = ["* * * * *"]')[0].kind, 'cloudflare-cron');
+  assert.equal(scanSites('apps/web/vercel.json', JSON.stringify({ crons: [{ path: '/api/cron/a', schedule: '* * * * *' }] }))[0].key, 'vercel-cron:apps/web/vercel.json:/api/cron/a');
+  assert.equal(scanSites('u/x.timer', '[Timer]\nOnBootSec=1min')[0].kind, 'systemd-timer');
+  assert.equal(scanSites('u/x.plist', '<key>StartInterval</key><integer>300</integer>')[0].kind, 'launchd');
+  assert.deepEqual(scanSites('.github/workflows/b.yml', 'on:\n  push:\n'), []);
+  assert.deepEqual(scanSites('apps/desktop/e.plist', '<key>com.apple.security.app-sandbox</key>'), []);
+});
+test('schedule-registration: red before green (negative control)', () => {
+  const sites = [{ key: 'github-cron:.github/workflows/new.yml', kind: 'github-cron' }];
+  assert.equal(srEvaluate({ sites }).length, 1, 'unregistered new cron fails');
+  assert.equal(srEvaluate({ sites: [{ ...sites[0], inline: true }] }).length, 0);
+  assert.equal(srEvaluate({ sites, baseline: [sites[0].key] }).length, 0, 'baselined passes');
+  assert.equal(srEvaluate({ sites, schedules: { [sites[0].key]: { scheduler: 'gem:lanes-tick', whyNotEvent: 'short' } } }).length, 1, 'a one-word reason is not a reason');
+  assert.equal(srEvaluate({ sites, schedules: { [sites[0].key]: { scheduler: 'gem:lanes-tick', whyNotEvent: WHY } } }).length, 0);
+  const reg = [{ status: 'live', trigger: { source: '.github/workflows/new.yml' }, clock: { scheduler: 'github:production-continuity', whyNotEvent: WHY } }];
+  assert.equal(srEvaluate({ sites, registry: reg }).length, 0, 'registry clock block registers it');
+  assert.equal(srEvaluate({ sites: [], baseline: ['github-cron:gone.yml'] }).length, 1, 'baseline only shrinks');
+});
+test('schedule-registration: inline marker needs a real reason; plugin is registered in shadow', async () => {
+  assert.ok(inlineRegistration(`# scheduler: gem:lanes-tick why-not-event: ${WHY}`));
+  assert.equal(inlineRegistration('# scheduler: gem:lanes-tick why-not-event: no'), null);
+  assert.equal(guardsReg.guards.find((g) => g.id === srName)?.mode, 'shadow');
+  const r = await srRun({ cwd: new URL('..', import.meta.url).pathname, files: ['guards/run.mjs'] });
+  assert.deepEqual(r.fails, []);
+});
