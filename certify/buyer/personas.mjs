@@ -1,6 +1,7 @@
 import { readFileSync, statSync, realpathSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { isAbsolute, relative, sep } from 'node:path';
+import { isAbsolute, join, relative, sep } from 'node:path';
+import { homedir } from 'node:os';
 import { appFile } from '../judge/artifacts.mjs';
 
 export const PUBLIC_PERSONA_FIELDS = Object.freeze([
@@ -18,13 +19,18 @@ export function publicPersonaBrief(facts) {
   return `Verified public facts: ${JSON.stringify(facts)}. Budget and willingness to pay are unknown; infer only from these facts.`;
 }
 
+/** `~/x` means the operator's home; persona and walk stores are private and never in the repo. */
+export function expandHome(p) {
+  return typeof p === 'string' && p.startsWith('~/') ? join(homedir(), p.slice(2)) : p;
+}
+
 export function readBuyerSetting(cwd, value) {
   return typeof value === 'string' ? JSON.parse(readFileSync(appFile(cwd, value), 'utf8')) : value;
 }
 
 export function archetypes({ cwd, config }) {
   const raw = readBuyerSetting(cwd, config.buyer.personas);
-  const rows = Array.isArray(raw) ? raw : raw?.personas;
+  const rows = Array.isArray(raw) ? raw : (raw?.personas ?? raw?.archetypes);
   if (!Array.isArray(rows) || !rows.length || rows.some(row => !/^[a-z0-9_-]+$/i.test(row.id) ||
       typeof row.brief !== 'string' || !row.brief.trim() || (row.control !== undefined && typeof row.control !== 'boolean')) ||
       new Set(rows.map(row => row.id)).size !== rows.length) throw new Error('invalid archetype personas');
@@ -34,7 +40,7 @@ export function archetypes({ cwd, config }) {
 export function loadPersona({ cwd, config, ref }) {
   const publicRow = archetypes({ cwd, config }).find(row => row.id === ref);
   if (publicRow) return publicRow;
-  const dir = config.buyer.privatePersonaDir;
+  const dir = expandHome(config.buyer.privatePersonaDir);
   if (!dir || !isAbsolute(dir)) throw new Error('privatePersonaDir must be an absolute private directory');
   const root = realpathSync(dir);
   const fromRepo = relative(realpathSync(cwd), root);

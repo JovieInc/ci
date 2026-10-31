@@ -223,3 +223,13 @@ test('buyer CLI gate verifies a signed judgement and stored own-walk evidence be
     if (previousKey === undefined) delete process.env.CERT_JUDGE_SIGNING_KEY; else process.env.CERT_JUDGE_SIGNING_KEY = previousKey;
   }
 });
+
+test('calibration walks resolve to the private state dir, never the repo', async () => {
+  const { walkPath } = await import('../../certify/buyer/calibrate.mjs');
+  const { homedir } = await import('node:os');
+  const cfg = { app: 'health-app' };
+  assert.equal(walkPath(cfg, 'holdout-one'), `${homedir()}/.local/state/health-app-buyer-eval/walks/holdout-one`);
+  assert.equal(walkPath(cfg, '~/w/x'), `${homedir()}/w/x`);
+  assert.equal(walkPath(cfg, '/abs/run'), '/abs/run');
+  assert.throws(() => walkPath(cfg, '../repo/walk'), /run id or absolute/);
+});

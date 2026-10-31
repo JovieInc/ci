@@ -3,6 +3,17 @@ import { archetypes, readBuyerSetting } from './personas.mjs';
 import { evaluate } from './run.mjs';
 import { holdoutHolds } from './rubric.mjs';
 import { MIN_HOLDOUTS } from './gate.mjs';
+import { stateDir } from './store.mjs';
+import { expandHome } from './personas.mjs';
+
+// A calibration walk is an absolute path, `~/...`, or a bare run id stored in the
+// app's private state dir (<state>/walks/<id>): walks carry frames and never live in git.
+export function walkPath(config, ref) {
+  const p = expandHome(ref);
+  if (isAbsolute(p)) return p;
+  if (/^[a-z0-9][a-z0-9_-]*$/i.test(p)) return resolve(stateDir(config), 'walks', p);
+  throw new Error(`calibration walk must be a run id or absolute path: ${ref}`);
+}
 
 export async function calibrate({ cwd = process.cwd(), config, walk, sha, samples = 3, state,
   evaluateRun = evaluate, ...deps }) {
@@ -19,7 +30,7 @@ export async function calibrate({ cwd = process.cwd(), config, walk, sha, sample
   for (const entry of entries) {
     try {
       const receipt = await evaluateRun({ cwd, config, samples, state, ...deps,
-        walk: isAbsolute(entry.walk) ? entry.walk : resolve(cwd, entry.walk),
+        walk: walkPath(config, entry.walk),
         persona: entry.persona ?? people.find(row => !row.control)?.id,
         holdout: true, expect: entry.expect, calibrationId: entry.id });
       receipts.push(receipt);
@@ -31,9 +42,10 @@ export async function calibrate({ cwd = process.cwd(), config, walk, sha, sample
   for (const control of controls) {
     try {
       const source = set.control?.walk ?? walk;
+      // Controls judge the app's real walk (from --walk), never a holdout.
       if (!source) throw new Error('control walk required');
       const receipt = await evaluateRun({ cwd, config, samples, state, sha, ...deps,
-        walk: resolve(cwd, source), persona: control.id, holdout: false });
+        walk: walkPath(config, source), persona: control.id, holdout: false });
       receipts.push(receipt);
       checks.push({ id: control.id, status: holdoutHolds(receipt) && receipt.sha === sha ? 'passed' : 'failed' });
     } catch { checks.push({ id: control.id, status: 'failed' }); }
