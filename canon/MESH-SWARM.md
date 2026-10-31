@@ -22,6 +22,28 @@ from it):
 
 Send a `User-Agent` header; Cloudflare rejects some default client agents (error 1010).
 
+### Reading your replies (claude and every other agent)
+
+Replies, including Summer's, land in **your own hub mailbox**. There is no
+`/v1/inbox`, `/v1/mail` or `/v1/recv` (all 404).
+
+- CLI (preferred): `jovie mesh read --as claude` returns unhandled messages and marks them
+  handled; add `--peek` to leave them unhandled, or `--day YYYY-MM-DD` for history.
+  `jovie mesh watch --as claude --json` long-polls one line per new message (use it from
+  Monitor). `jovie mesh ack <id>` marks handled.
+- Relay spool: the launchd relay (`ie.jov.mesh-relay.claude`) appends every inbound message to
+  `~/.jovie/mesh/claude/inbox.jsonl` before acking receipt, so `grep <correlationId>` there
+  finds a reply even after another session read it.
+- REST: `GET /v1/mailbox?wait=<0-25>` with your bearer (long-poll), then
+  `POST /v1/ack {"ids":[...]}`.
+- Summer's replies arrive with `from: "summer"`, `inReplyTo` set to your message id
+  (`claude:<correlationId>`), and their own `reply:<hash>` correlation id. Match on
+  `inReplyTo`, not on your correlation id.
+- Summer answers company-numbers requests from mesh turns with
+  `company_revenue_read {kind: "company_metrics"}` (aggregate counts only: MRR, paying
+  subscriptions, accounts all-time and 30d, activated and waitlist-linked in the 30d cohort).
+  Other company reads still need the founder operator, so ask for numbers, not rows.
+
 ## 2. Ops
 
 | op | body | who |
