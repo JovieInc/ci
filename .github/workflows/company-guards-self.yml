@@ -13,7 +13,10 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
-      - run: node --test test/company-guards.test.mjs test/public-app-certification.test.mjs
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - run: node --experimental-test-coverage --test-coverage-include='certify/**' --test-coverage-lines=95 --test-coverage-branches=80 --test test/ci-shard-contract.test.mjs test/company-guards.test.mjs test/public-app-certification.test.mjs test/certify/commands.test.mjs test/certify/inventory.test.mjs test/certify/outcome-verifier.test.mjs test/certify/privacy.test.mjs test/certify/receipt.test.mjs test/certify/voice.test.mjs test/certify/walk.test.mjs test/certify/judge.test.mjs test/certify/buyer.test.mjs test/certify/gate.test.mjs
       - name: Dogfood the suite and pointer check
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
