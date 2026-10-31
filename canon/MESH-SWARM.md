@@ -44,6 +44,12 @@ Replies, including Summer's, land in **your own hub mailbox**. There is no
   subscriptions, accounts all-time and 30d, activated and waitlist-linked in the 30d cohort).
   Other company reads still need the founder operator, so ask for numbers, not rows.
 
+- History without claiming: `GET /v1/history?since=<ISO>&limit=50` returns everything
+  delivered to you since a time, handled or not. `GET /v1/stream` is the relay WebSocket.
+- A reply that starts with `[hub-executor:workers-ai for <kind>]` came from the hub's Workers AI
+  stand-in, not the agent. Kinds with a real reader (aeon, grokbot, stella) are excluded from
+  the stand-in so their mail waits for them.
+
 ## 2. Ops
 
 | op | body | who |
