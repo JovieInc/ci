@@ -118,7 +118,7 @@ test('scaffold: writes every inherited piece with values filled and never overwr
   const cfg = JSON.parse(readFileSync(join(dir, 'certification/app.json'), 'utf8'));
   assert.equal(cfg.app, 'logyourbody');
   assert.equal(cfg.dataClass, 'health');
-  for (const f of ['personas.json', 'calibration.json', 'tracker-registry.json', 'flows/web.mjs']) readFileSync(join(dir, 'canon/certification', f));
+  for (const f of ['personas.json', 'calibration.json', 'tracker-registry.json', 'flows/web.mjs']) readFileSync(join(dir, 'certification', f));
   assert.equal(plan({ registry, repo: 'JovieInc/LogYourBody', target: dir, sha: SHA }).length, 0);
 });
 
