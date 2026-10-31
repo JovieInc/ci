@@ -30,12 +30,16 @@ export function plan({ registry, repo, app: only, target, sha }) {
     // An app whose config exists is set up; only repo-level files (the workflow) are still added.
     const configured = existsSync(join(target, app.config));
     // Repos with several apps namespace every per-app file (<app>-personas.json, flows/<app>.mjs).
+    // Per-app files live next to the config (default certification/, or e.g. canon/certification/
+    // in a repo whose root is allowlisted).
+    const dir = dirname(app.config);
     const single = app.config === 'certification/app.json';
     const renames = single ? {} : {
-      'certification/personas.json': `certification/${app.id}-personas.json`,
-      'certification/calibration.json': `certification/${app.id}-calibration.json`,
-      'certification/tracker-registry.json': `certification/${app.id}-tracker-registry.json`,
-      'certification/flows/web.mjs': `certification/flows/${app.id}.mjs`,
+      'certification/personas.json': `${dir}/${app.id}-personas.json`,
+      'certification/calibration.json': `${dir}/${app.id}-calibration.json`,
+      'certification/tracker-registry.json': `${dir}/${app.id}-tracker-registry.json`,
+      'certification/flows/web.mjs': `${dir}/flows/${app.id}.mjs`,
+      'certification/README.md': `${dir}/README.md`,
     };
     for (const src of walk(SKELETON)) {
       let rel = relative(SKELETON, src);

@@ -118,19 +118,19 @@ test('scaffold: writes every inherited piece with values filled and never overwr
   const cfg = JSON.parse(readFileSync(join(dir, 'certification/app.json'), 'utf8'));
   assert.equal(cfg.app, 'logyourbody');
   assert.equal(cfg.dataClass, 'health');
-  for (const f of ['personas.json', 'calibration.json', 'tracker-registry.json', 'flows/web.mjs']) readFileSync(join(dir, 'certification', f));
+  for (const f of ['personas.json', 'calibration.json', 'tracker-registry.json', 'flows/web.mjs']) readFileSync(join(dir, 'canon/certification', f));
   assert.equal(plan({ registry, repo: 'JovieInc/LogYourBody', target: dir, sha: SHA }).length, 0);
 });
 
 test('scaffold: a repo with several apps gets one config per app at its registry path', () => {
   const dir = scaffold('JovieInc/Jovie');
   for (const f of ['jovie-web.json', 'jovie-ios.json', 'should-i-make.json']) {
-    assert.equal(JSON.parse(readFileSync(join(dir, 'certification', f), 'utf8')).schema, 'company.public-app-cert/v1');
+    assert.equal(JSON.parse(readFileSync(join(dir, 'canon/certification', f), 'utf8')).schema, 'company.public-app-cert/v1');
   }
-  const ios = JSON.parse(readFileSync(join(dir, 'certification/jovie-ios.json'), 'utf8'));
-  assert.equal(ios.buyer.personas, 'certification/jovie-ios-personas.json');
-  assert.equal(ios.goldenPath.flows.web, 'certification/flows/jovie-ios.mjs');
-  readFileSync(join(dir, 'certification/jovie-ios-personas.json'));
+  const ios = JSON.parse(readFileSync(join(dir, 'canon/certification/jovie-ios.json'), 'utf8'));
+  assert.equal(ios.buyer.personas, 'canon/certification/jovie-ios-personas.json');
+  assert.equal(ios.goldenPath.flows.web, 'canon/certification/flows/jovie-ios.mjs');
+  readFileSync(join(dir, 'canon/certification/jovie-ios-personas.json'));
 });
 
 test('scaffold: an app that is already configured only gets repo-level files', () => {
