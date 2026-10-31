@@ -31,7 +31,15 @@ if (cmd === 'validate') {
   if (!apps.length) { console.error(`::error::${repo}: no non-dormant app registered in canon/public-apps.json`); process.exit(1); }
   console.log(`certify validate: ${errors.length ? 'FAIL' : 'ok'} (${apps.length} app(s), ${errors.length} error(s), ${warnings.length} warning(s))`);
   process.exit(errors.length ? 1 : 0);
+} else if (['privacy', 'receipt', 'publish'].includes(cmd)) {
+  try {
+    const { runCommand } = await import('./commands.mjs');
+    process.exitCode = await runCommand(cmd, process.argv.slice(3));
+  } catch (error) {
+    console.error(`certify ${cmd}: ${error.message}`);
+    process.exitCode = 1;
+  }
 } else {
-  console.error('usage: certify/cli.mjs validate');
+  console.error('usage: certify/cli.mjs validate|privacy|receipt|publish');
   process.exit(2);
 }
