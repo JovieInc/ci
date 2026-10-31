@@ -64,6 +64,18 @@ Every gate, canary, certification step and agent verify step:
   checks, skipped, blocked or a missing result is never green
   (`guards/plugins/vacuous-verdict.mjs`).
 
+## Public apps: certified, guarded, inherited by default
+
+Every public-facing paid or freemium app (Jovie web and iOS, LogYourBody, and
+any new one) follows `canon/PUBLIC-APP-CERTIFICATION.md` in full: golden-path
+walk on video judged frame by frame, the buyer eval ("would this person pay"),
+the privacy compliance loop (stricter `health` profile for health data),
+customer voice to Tim, and waste and capacity registration. One shared
+implementation (`certify/`), one small per-app config. Registering an app in
+`canon/public-apps.json` scaffolds it on the next pin bump; every public
+surface must be classified there; an app cannot move to stage `public`
+without a fresh passing receipt. No per-app opt-in.
+
 ## Architecture and anti-slop (ratchets)
 
 - File size: no source file over 500 lines; baselined files may not grow

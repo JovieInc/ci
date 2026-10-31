@@ -1,0 +1,76 @@
+{
+  "schema": "company.public-apps/v1",
+  "standard": "canon/PUBLIC-APP-CERTIFICATION.md",
+  "maxReceiptAgeDays": 7,
+  "defaultEnforceDays": 7,
+  "receiptEnvironment": "certification",
+  "note": "Every public-facing paid or freemium app, and a classification for every domain and canonical Vercel project in canon/resources.json. Stage: prelaunch (valid config required), public (fresh passing receipt required from enforceFrom), dormant (not serving; certify before reactivating). Adding an app here makes the next pin bump scaffold it.",
+  "apps": [
+    {
+      "id": "jovie-web",
+      "name": "Jovie",
+      "repo": "JovieInc/Jovie",
+      "config": "certification/jovie-web.json",
+      "stage": "public",
+      "enforceFrom": "2026-11-07",
+      "surfaces": [
+        { "kind": "web", "url": "https://jov.ie" },
+        { "kind": "vercel-project", "name": "jovie" },
+        { "kind": "domain", "name": "jov.ie" }
+      ],
+      "dataClass": "standard",
+      "billing": "freemium (Stripe)",
+      "note": "Most of the machinery started here (2026-10-31 PRs 23945, 23952, 23953, 23958, 23966, 23970). Jovie migrates onto certify/ rather than keeping a fork."
+    },
+    {
+      "id": "jovie-ios",
+      "name": "Jovie iOS",
+      "repo": "JovieInc/Jovie",
+      "config": "certification/jovie-ios.json",
+      "stage": "prelaunch",
+      "enforceFrom": "2026-11-14",
+      "surfaces": [{ "kind": "ios", "path": "apps/ios" }],
+      "dataClass": "standard",
+      "billing": "freemium (shares Jovie web billing)"
+    },
+    {
+      "id": "logyourbody",
+      "name": "LogYourBody",
+      "repo": "JovieInc/LogYourBody",
+      "config": "certification/app.json",
+      "stage": "prelaunch",
+      "enforceFrom": "2026-11-07",
+      "surfaces": [
+        { "kind": "web", "url": "https://www.logyourbody.com" },
+        { "kind": "ios", "path": "apps/ios", "bundleId": "com.logyourbody.app" },
+        { "kind": "vercel-project", "name": "log-your-body" },
+        { "kind": "domain", "name": "logyourbody.com" }
+      ],
+      "dataClass": "health",
+      "billing": "paid (RevenueCat, App Store subscription with 3-day trial)",
+      "note": "Health data: privacy profile health (stricter than Jovie). Web is waitlist plus account surfaces; the paid path is iOS."
+    },
+    {
+      "id": "should-i-make",
+      "name": "Should I Make a Music Video",
+      "repo": "JovieInc/Jovie",
+      "config": "certification/should-i-make.json",
+      "stage": "dormant",
+      "surfaces": [
+        { "kind": "vercel-project", "name": "shouldimake" },
+        { "kind": "web", "url": "https://shouldimakeamusicvideo.com" }
+      ],
+      "dataClass": "standard",
+      "billing": "free lead-gen tool",
+      "note": "Returned 503 on 2026-10-31. Certify before it serves again."
+    }
+  ],
+  "notApps": [
+    { "kind": "vercel-project", "name": "summer", "reason": "internal: Summer agent app, Tim only" },
+    { "kind": "vercel-project", "name": "jovie-docs", "reason": "public docs, no signup or payment; privacy crawl still covers it through jovie-web" },
+    { "kind": "domain", "name": "staging.jov.ie", "reason": "staging canary for jovie-web, not a customer surface" },
+    { "kind": "domain", "name": "summer.jov.ie", "reason": "internal: Summer app" },
+    { "kind": "domain", "name": "timwhite.co", "reason": "personal site, not a company app" },
+    { "kind": "github-repo", "name": "JovieInc/ovie", "reason": "archived; Ovie is the internal /hud route of jovie-web, Tim only" }
+  ]
+}

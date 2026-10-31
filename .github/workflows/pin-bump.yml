@@ -5,7 +5,7 @@ name: Pin Bump
 on:
   push:
     branches: [main]
-    paths: ['canon/**', 'guards/**', '.github/workflows/company-guards.yml']
+    paths: ['canon/**', 'guards/**', 'certify/**', 'templates/public-app/**', '.github/workflows/company-guards.yml', '.github/workflows/public-app-certification.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -35,12 +35,18 @@ jobs:
           for repo in $(node -e 'console.log(require("./canon/consumers.json").repos.join(" "))'); do
             gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
             f="w-$repo/.github/workflows/company-guards.yml"
-            [ -f "$f" ] || { echo "$repo: not wired"; continue; }
-            sed -i -E "s#(company-guards\.yml@|ci-ref: )[0-9a-f]{40}#\1$SHA#g" "$f"
-            git -C "w-$repo" diff --quiet && continue
+            [ -f "$f" ] || echo "$repo: company guards not wired"
+            for wf in "$f" "w-$repo/.github/workflows/public-app-certification.yml"; do
+              if [ -f "$wf" ]; then sed -i -E "s#(company-guards\.yml@|public-app-certification\.yml@|ci-ref: )[0-9a-f]{40}#\1$SHA#g" "$wf"; fi
+            done
+            # Public apps inherit the certification layer by default (canon/PUBLIC-APP-CERTIFICATION.md):
+            # scaffold any missing stub for every app canon/public-apps.json registers to this repo.
+            node templates/public-app/bootstrap.mjs --repo "JovieInc/$repo" --target "w-$repo" --sha "$SHA"
+            git -C "w-$repo" add -A
+            git -C "w-$repo" diff --cached --quiet && continue
             git -C "w-$repo" checkout -q -b "compounding/ci-pin-${SHA:0:8}"
-            git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qam "chore(ci): bump company guards pin to ${SHA:0:8}"
+            git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qm "chore(ci): bump company guards pin to ${SHA:0:8}"
             git -C "w-$repo" push -q origin HEAD
             gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label compounding \
-              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA."
+              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA. Scaffolds any missing public-app certification stubs (canon/PUBLIC-APP-CERTIFICATION.md)."
           done
