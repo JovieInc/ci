@@ -34,6 +34,8 @@
           "required": ["policy"],
           "properties": {
             "policy": { "const": "canary-only" },
+            "emailPattern": { "type": "string", "description": "Required by the recorder: regex admitting only canary/test email addresses" },
+            "env": { "type": "object", "properties": { "email": { "type": "string" }, "password": { "type": "string" } }, "additionalProperties": false },
             "source": { "type": "string", "description": "Where canary credentials come from (e.g. doppler:<project>/<config>). Never in git." }
           }
         }
@@ -58,8 +60,8 @@
       "type": "object",
       "required": ["personas", "calibration"],
       "properties": {
-        "personas": { "type": "string" },
-        "calibration": { "type": "string" },
+        "personas": { "oneOf": [{ "type": "string" }, { "type": "array", "minItems": 1, "items": { "type": "object", "required": ["id", "brief"], "properties": { "id": { "type": "string" }, "brief": { "type": "string" }, "control": { "type": "boolean" } } } }] },
+        "calibration": { "oneOf": [{ "type": "string" }, { "type": "object", "required": ["holdouts", "positiveCanaries"], "properties": { "holdouts": { "type": "array" }, "positiveCanaries": { "type": "array" } } }] },
         "contaminationMarkers": { "type": "array", "items": { "type": "string" } },
         "privatePersonaDir": { "type": "string" }
       }

@@ -73,8 +73,8 @@ export function validateConfig(c, { cwd, registryEntry } = {}) {
   const b = c.buyer;
   if (!isObj(b)) e.push('buyer: required');
   else {
-    if (!isStr(b.personas)) e.push('buyer.personas: path to archetype personas (public, no PII)');
-    if (!isStr(b.calibration)) e.push('buyer.calibration: path to the calibration set');
+    if (!isStr(b.personas) && !(Array.isArray(b.personas) && b.personas.length > 0 && b.personas.every(p => isStr(p?.id) && isStr(p?.brief)))) e.push('buyer.personas: path or nonempty archetype list (public, no PII)');
+    if (!isStr(b.calibration) && !(isObj(b.calibration) && Array.isArray(b.calibration.holdouts) && Array.isArray(b.calibration.positiveCanaries))) e.push('buyer.calibration: path or calibration set with holdouts and positiveCanaries');
   }
 
   const p = c.privacy;

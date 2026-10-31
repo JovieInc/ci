@@ -87,3 +87,102 @@ no live deployment, customer event or app certification is implied.
 The original source-wired outcome tests use frozen error-copy fixtures captured
 from the source ref. Consumer CI can additionally check its evolving local copy.
 Buyer evaluation, walk recording and frame judging are integrated separately.
+
+## Part B: walk, frame judge, buyer eval
+
+Run from the consumer repository. The app owns `certification/app.json`, the
+flow module, public archetype briefs, price source and calibration walks.
+All modules are Node ESM with no npm dependencies in this repository.
+
+```sh
+node /path/to/ci/certify/walk/cli.mjs --app-config certification/app.json --surface web --out /private/run --base-url https://your-app.example
+node /path/to/ci/certify/buyer/cli.mjs run --app-config certification/app.json --walk /private/run --persona buyer --samples 3
+node /path/to/ci/certify/buyer/cli.mjs calibrate --app-config certification/app.json --walk /private/run --sha FULL_SHA
+node /path/to/ci/certify/buyer/cli.mjs gate --app-config certification/app.json --subject buyer --sha FULL_SHA --cert /private/judgement.json
+```
+
+The recorder dynamically resolves Playwright from the app's `node_modules`.
+Set `CERT_CANARY_EMAIL`, optionally `CERT_CANARY_PASSWORD`, `CERT_SOURCE_SHA`
+(the served build SHA), and `CERT_WALK_SUBJECT` (opaque canary subject id).
+Override credential variable names with `goldenPath.accounts.env.email` and
+`.password`. The recorder requires `accounts.emailPattern` and `canary-only`
+policy. A supplied `account` must equal the environment-derived credentials.
+The fallback SHA is the app's local Git HEAD; that alone is not production proof.
+
+`goldenPath.flows[surface]` is a repo-relative ESM module with a default async
+function receiving `{page, snap, settle, account, config, baseUrl}`. Call
+`await snap(stageId, label)` after each semantic stage. A stage with a `surface`
+applies to that surface; stages without one apply to every surface. Credentials,
+OTP retrieval, provider adapters and any app-specific teardown belong in the
+app's flow. The recorder performs no database cleanup. It preserves partial
+evidence on failure, refuses nonempty output directories and never writes
+credentials into metadata.
+
+The evidence contract is `steps.json`, `walk.json`, `walk.webm`, `NN.png`, and
+`dom/NN.txt`. `walk.json` binds the app, walk id, surface, subject, build SHA,
+machine timestamps and strict stage checks. Each step also records its stage,
+walk id and machine timestamps. Recording every stage is necessary; the judge
+must separately verify each stage's semantic oracle. Artifacts must contain
+only canary/test data and stay in private directories outside Git.
+
+`judgeWalk({runDir, config})` in `judge/judge.mjs` judges every screenshot and
+mid-window video frame against the stage oracle. It uses the shared
+`lib/outcome-verifier.mjs` detector; part A supplies that module. Frame extraction
+requires `ffmpeg` and `ffprobe` on PATH and fails closed when unavailable. An
+empty, failed or missing check never passes. Output schema is
+`company.walk-judgement/v1` with stage and step verdicts `pass|fail|abstain`.
+The model transport is injectable as `run(args, cwd, timeoutMs)` for tests.
+Production uses `claude -p` with a strong model, empty settings sources, empty
+strict MCP configuration, no session persistence, only the Read tool, and a
+fresh directory containing only copied frames. This uses CLI isolation, not an
+OS filesystem sandbox. Evidence is explicitly untrusted data in the prompt.
+
+`signReceipt`, `verifyReceiptSignature` and `gateDecision` in
+`judge/receipt.mjs` authenticate the whole judgement and bind its SHA, app,
+model, rubric, config and freshness. Set `CERT_JUDGE_SIGNING_KEY` and optionally
+`CERT_JUDGE_SIGNING_KEY_ID` through the environment. Unsigned receipts fail the
+gate. Judging and signing do not deploy, publish or invite anyone.
+
+`readOutcome({cwd, config})` fails if the live price cannot be parsed, has
+multiple matches, or differs from `paidOutcome.price`. Without `pricePattern`,
+the price source must contain the complete configured numeric price string.
+Currency, interval, plan, trial and free alternative all come from config.
+
+`buyer.personas` is either a JSON file path or an array of `{id, brief, control}`.
+`buyer.calibration` is either a JSON path or
+`{holdouts:[{id,expect:'no_pay',walk,persona?}],positiveCanaries:[{id,expect:'pay',walk,persona?}],control?:{walk}}`.
+Holdout ids must be distinct; at least three bad walks, one positive and every
+configured off-audience control must hold. Calibration control uses `--walk`
+unless `control.walk` is configured. These walks may remain in private state.
+
+Tier B persona ids resolve only in the absolute `buyer.privatePersonaDir`,
+outside all Git worktrees, as `ID.json` with mode 0600. Files contain
+`{subjectId, facts, identityTokens}`. Public facts are whitelisted in
+`buyer/personas.mjs`; contact information, private health facts and arbitrary
+fields are rejected. Use opaque subject ids and supply identity tokens for
+redaction. Real-signup facts must be verified public facts. The recorder still
+uses only canary accounts. An archetype stand-in cannot qualify as an own walk.
+
+`evaluate`, `judgeBuyer`, `calibrate`, `buyerReady` and the pure rubric functions
+are exported from their corresponding buyer modules. `evaluate` writes private
+hashed receipts and `cost.jsonl` to `~/.local/state/<app>-buyer-eval`. All model
+samples must be valid and coherent for a positive result. Blocker objections
+cap p(pay); repeated objections can produce local proposals via `fixProposals`.
+No provider-specific issue publishing or external messaging is included.
+
+The optional cheap screen uses an injectable `screenCall` transport, avoiding a
+dependency on one app's provider client. A screen blocker needs deterministic
+DOM confirmation. Missing screen configuration or a provider outage routes to
+the strong judge. A strong model failure or contamination produces abstention.
+
+`buyerReady` requires signed walk certification allowance on the same app/SHA,
+current calibration, a fresh control `no_pay`, a fresh own-walk strong `pay`
+(median >=0.60, every sample >=0.50, enter >=0.65), and `timYes === true`.
+Before approval, `machineReady:true` yields `next:'ask-tim'` with `ready:false`.
+The CLI's `--tim-yes` records an explicit human yes; it grants no sending action.
+Receipts expire after three days. Output never sends anything.
+
+Validation uses the repository's exact self-test selector with
+`--experimental-test-coverage`. The test fixtures exercise a music product and
+a fitness product. Live browser/model qualification requires app-owned canary
+credentials and deployed-build evidence; unit tests do not establish that.
