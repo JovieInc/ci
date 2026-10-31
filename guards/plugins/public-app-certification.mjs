@@ -53,12 +53,12 @@ export function check({ registry, repo, cwd, listCertFiles = () => [], now = Dat
   return { fails, warnings };
 }
 
-function listCertFiles(cwd) {
-  const dir = join(cwd, 'certification');
-  if (!existsSync(dir)) return [];
-  return readdirSync(dir)
-    .filter((f) => f.endsWith('.json'))
-    .map((f) => `certification/${f}`)
+function listCertFiles(cwd, dirs = ['certification', 'canon/certification']) {
+  return dirs.flatMap((rel) => {
+    const dir = join(cwd, rel);
+    if (!existsSync(dir)) return [];
+    return readdirSync(dir).filter((f) => f.endsWith('.json')).map((f) => `${rel}/${f}`);
+  })
     .filter((rel) => {
       try { return JSON.parse(readFileSync(join(cwd, rel), 'utf8')).schema === 'company.public-app-cert/v1'; } catch { return false; }
     });
