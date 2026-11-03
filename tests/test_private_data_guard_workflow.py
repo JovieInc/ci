@@ -104,13 +104,17 @@ class EndpointCheckout(unittest.TestCase):
         wrapper.chmod(0o755)
 
     def run_workflow(self, event="pull_request", base=None, full=False, token=True, head=None):
-        env = {**os.environ, "EVENT_NAME": event, "PR_BASE_SHA": base or self.base,
-               "MERGE_GROUP_BASE_SHA": base or self.base, "PUSH_BEFORE": base or self.base,
+        env = {**os.environ, "EVENT_NAME": event, "PR_BASE_SHA": ZERO,
+               "MERGE_GROUP_BASE_SHA": ZERO, "PUSH_BEFORE": ZERO,
                "HEAD_SHA": head or self.head, "FULL_TREE": "true" if full else "false",
                "FAIL_ON_FINDINGS": "true", "EXTRA_PATHS": "", "EXTRA_CONTENT": "",
                "GH_TOKEN": "fixture-read-token" if token else "",
                "GITHUB_SERVER_URL": "https://github.com", "REAL_GIT": shutil.which("git"),
                "FETCH_TRACE": str(self.trace), "PATH": str(self.bin) + os.pathsep + os.environ["PATH"]}
+        key = {"pull_request": "PR_BASE_SHA", "push": "PUSH_BEFORE",
+               "merge_group": "MERGE_GROUP_BASE_SHA"}.get(event)
+        if key:
+            env[key] = base or self.base
         prep = next((s for s in WORKFLOW["jobs"]["guard"]["steps"]
                      if s.get("name") == "Fetch exact comparison base"), None)
         if prep:
@@ -131,24 +135,29 @@ class EndpointCheckout(unittest.TestCase):
     def test_all_event_endpoints_fetch_only_missing_base_and_keep_head(self):
         for event in ["pull_request", "push", "merge_group"]:
             with self.subTest(event=event):
+                if event != "pull_request":
+                    shutil.rmtree(self.clone)
+                    git(self.root, "clone", "--quiet", "--depth=1", "--no-tags",
+                        self.origin.as_uri(), str(self.clone))
                 if self.trace.exists():
                     self.trace.unlink()
                 result = self.run_workflow(event)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn("scanned change: 0 finding(s)", result.stdout)
                 self.assertEqual(git(self.clone, "rev-parse", "HEAD"), self.head)
-                if event == "pull_request":
-                    fetches = [json.loads(s) for s in self.trace.read_text().splitlines()]
-                    self.assertEqual(len(fetches), 1)
-                    self.assertEqual(fetches[0]["args"],
-                                     ["fetch", "--no-tags", "--depth=1", "origin", self.base])
-                    values = fetches[0]["config"]
-                    self.assertTrue(any(v.startswith("AUTHORIZATION: basic ")
-                                        for k, v in values.items() if k.startswith("GIT_CONFIG_VALUE_")))
-                    self.assertNotIn("fixture-read-token", " ".join(fetches[0]["args"]))
-                    self.assertNotIn("extraheader", git(self.clone, "config", "--local", "--list").lower())
-                else:
-                    self.assertFalse(self.trace.exists(), "already-present base should not refetch")
+                fetches = [json.loads(line) for line in self.trace.read_text().splitlines()]
+                self.assertEqual(len(fetches), 1)
+                self.assertEqual(fetches[0]["args"],
+                                 ["fetch", "--no-tags", "--depth=1", "origin", self.base])
+                values = fetches[0]["config"]
+                self.assertTrue(any(value.startswith("AUTHORIZATION: basic ")
+                                    for key, value in values.items() if key.startswith("GIT_CONFIG_VALUE_")))
+                self.assertNotIn("fixture-read-token", " ".join(fetches[0]["args"]))
+                self.assertNotIn("extraheader", git(self.clone, "config", "--local", "--list").lower())
+                self.trace.unlink()
+                again = self.run_workflow(event)
+                self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+                self.assertFalse(self.trace.exists(), "already-present base should not refetch")
 
     def test_anonymous_public_base_fetch_preserves_scan(self):
         result = self.run_workflow(token=False)
