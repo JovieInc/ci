@@ -44,8 +44,59 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          fetch-depth: 1
           persist-credentials: false
+
+      - name: Fetch exact comparison base
+        env:
+          GH_TOKEN: ${{ github.token }}
+          FULL_TREE: ${{ inputs.full-tree }}
+          EVENT_NAME: ${{ github.event_name }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          MERGE_GROUP_BASE_SHA: ${{ github.event.merge_group.base_sha }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          python3 - <<'PY'
+          import base64, os, re, subprocess, sys
+
+          def current_head():
+              return subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
+
+          head = os.environ["HEAD_SHA"]
+          if not re.fullmatch(r"[0-9a-f]{40}", head) or current_head() != head:
+              sys.exit("::error::Checked-out HEAD does not match the expected event head")
+          if os.environ.get("FULL_TREE") == "true":
+              sys.exit(0)
+          base = {"push": os.environ.get("PUSH_BEFORE"), "pull_request": os.environ.get("PR_BASE_SHA"),
+                  "merge_group": os.environ.get("MERGE_GROUP_BASE_SHA")}.get(os.environ.get("EVENT_NAME", ""), "")
+          if not base or base == "0" * 40 or not re.fullmatch(r"[0-9a-f]{40}", base):
+              sys.exit(0)  # The scan retains its conservative whole-tree fallback.
+          if subprocess.run(["git", "cat-file", "-e", f"{base}^{{commit}}"], capture_output=True).returncode == 0:
+              sys.exit(0)
+
+          # Reuse only the existing read token, in this child's environment.
+          # No credential is persisted in Git config or placed in argv/logs.
+          env = os.environ.copy()
+          token = env.pop("GH_TOKEN", "")
+          if token:
+              index = int(env.get("GIT_CONFIG_COUNT", "0"))
+              server = env.get("GITHUB_SERVER_URL", "https://github.com").rstrip("/")
+              auth = base64.b64encode(("x-access-token:" + token).encode()).decode()
+              env.update({"GIT_CONFIG_COUNT": str(index + 1),
+                          f"GIT_CONFIG_KEY_{index}": f"http.{server}/.extraheader",
+                          f"GIT_CONFIG_VALUE_{index}": "AUTHORIZATION: basic " + auth})
+          try:
+              fetched = subprocess.run(["git", "fetch", "--no-tags", "--depth=1", "origin", base],
+                                       env=env, capture_output=True, timeout=120)
+              available = fetched.returncode == 0
+          except subprocess.TimeoutExpired:
+              available = False
+          if current_head() != head:
+              sys.exit("::error::Comparison-base fetch changed the checked-out event head")
+          if not available:
+              print("::warning::Exact comparison base unavailable; conservative whole-tree scan remains enabled")
+          PY
 
       - name: Scan for private data
         env:
