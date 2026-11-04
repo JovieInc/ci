@@ -40,6 +40,7 @@ for (const f of readdirSync(pdir).filter((x) => x.endsWith('.mjs'))) {
   const r = await m.run({ cwd: '.', baselineDir: '.company-guards' });
   const sink = modeOf(m.name) === 'shadow' ? warnings : fails;
   sink.push(...(r.fails || []).map((x) => `${m.name}: ${x}`));
+  warnings.push(...(r.warnings || []).map((x) => `${m.name}: ${x}`));
 }
 
 for (const w of warnings) console.log(`::warning::${w}`);

@@ -6,6 +6,8 @@
     {"id": "agents-pointer", "owner": "ci", "mode": "enforce", "source": "guards/run.mjs"},
     {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
     {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"},
-    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"}
+    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
+    {"id": "public-app-certification", "owner": "ci", "mode": "enforce", "source": "guards/plugins/public-app-certification.mjs", "note": "Per-app grace until enforceFrom in canon/public-apps.json; dormant apps warn."},
+    {"id": "public-app-launch", "owner": "ci", "mode": "enforce", "source": "scripts/public-app-scan.mjs", "note": "Runs in JovieInc/ci: every public surface classified; stage public needs a fresh passing receipt."}
   ]
 }

@@ -1,0 +1,42 @@
+# Launch guard for public apps (canon/PUBLIC-APP-CERTIFICATION.md).
+# On PRs that touch the registry or resources: every public surface is classified, and an
+# app moved to stage "public" has a fresh passing certification receipt.
+# Daily: re-check receipt freshness and keep one open issue per failing scan.
+name: Public App Scan
+on:
+  pull_request:
+    paths: ['canon/public-apps.json', 'canon/resources.json', 'scripts/public-app-scan.mjs', 'certify/**']
+  push:
+    branches: [main]
+    paths: ['canon/public-apps.json', 'canon/resources.json', 'scripts/public-app-scan.mjs']
+  schedule: [{ cron: '41 7 * * *' }]
+  workflow_dispatch:
+permissions:
+  contents: read
+  issues: write
+jobs:
+  scan:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Scan
+        id: scan
+        shell: bash # -eo pipefail, so tee does not mask a failing scan
+        env:
+          GITHUB_TOKEN: ${{ secrets.RESOURCE_SCAN_GH_TOKEN || github.token }}
+        run: node scripts/public-app-scan.mjs 2>&1 | tee scan.txt
+      - name: Open or update issue (scheduled runs)
+        if: ${{ always() && github.event_name == 'schedule' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh label create public-app-cert --color B60205 2>/dev/null || true
+          existing=$(gh issue list --label public-app-cert --state open --json number --jq '.[0].number')
+          if grep -q 'public-app-scan: ok' scan.txt; then
+            [ -n "$existing" ] && gh issue close "$existing" -c "Clean scan."
+            exit 0
+          fi
+          body=$(printf 'Public app scan failed. Policy: canon/PUBLIC-APP-CERTIFICATION.md\n\n~~~\n%s\n~~~\n' "$(cat scan.txt)")
+          if [ -n "$existing" ]; then gh issue edit "$existing" --body "$body"; else gh issue create --label public-app-cert --title "public-app-cert: scan failing" --body "$body"; fi
