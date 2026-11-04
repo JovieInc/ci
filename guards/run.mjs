@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Runs the shared guard suite in a consumer checkout (cwd).
-import { readdirSync, readFileSync, existsSync } from 'node:fs';
+import { readdirSync, readFileSync, existsSync, lstatSync, readlinkSync } from 'node:fs';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { dirname, join } from 'node:path';
 import { run as size } from './size.mjs';
@@ -10,10 +10,22 @@ export const POINTER = 'JovieInc/ci canon/COMPANY.md';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const fails = [];
 
-// 1. AGENTS.md (or CLAUDE.md) points at the company canon.
-const docs = ['AGENTS.md', 'CLAUDE.md'].filter((f) => existsSync(f));
-if (!docs.some((f) => readFileSync(f, 'utf8').includes(POINTER))) {
-  fails.push(`agents-pointer: no AGENTS.md/CLAUDE.md contains "${POINTER}"`);
+// 1. AGENTS.md is the canonical file and points at the company canon.
+//    CLAUDE.md, if present, must be a symlink to AGENTS.md (never the reverse).
+const isLink = (f) => existsSync(f) && lstatSync(f).isSymbolicLink();
+if (!existsSync('AGENTS.md')) {
+  fails.push('agents-pointer: AGENTS.md is missing (it is the canonical agent doc)');
+} else {
+  if (isLink('AGENTS.md')) {
+    fails.push('agents-pointer: AGENTS.md must be the real file; make CLAUDE.md the symlink to it');
+  } else if (!readFileSync('AGENTS.md', 'utf8').includes(POINTER)) {
+    fails.push(`agents-pointer: AGENTS.md does not contain "${POINTER}"`);
+  }
+}
+if (existsSync('CLAUDE.md') || isLink('CLAUDE.md')) {
+  if (!isLink('CLAUDE.md') || readlinkSync('CLAUDE.md') !== 'AGENTS.md') {
+    fails.push('agents-pointer: CLAUDE.md must be a symlink to AGENTS.md (ln -s AGENTS.md CLAUDE.md)');
+  }
 }
 
 // 2. PR body mentions.
