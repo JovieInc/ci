@@ -46,6 +46,27 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
 
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync, spawnSync } from 'node:child_process';
+
+for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
+  test(`agents: CLAUDE.md target ${target}`, (t) => {
+    const cwd = mkdtempSync(join(tmpdir(), 'agents-guard-'));
+    t.after(() => rmSync(cwd, { recursive: true, force: true }));
+    execFileSync('git', ['init', '-q'], { cwd });
+    writeFileSync(join(cwd, 'AGENTS.md'), 'Company canon: JovieInc/ci canon/COMPANY.md\n');
+    if (target) symlinkSync(target, join(cwd, 'CLAUDE.md'));
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../guards/run.mjs', import.meta.url))], {
+      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '' },
+    });
+    const valid = target === null || target === 'AGENTS.md';
+    assert.equal(result.status, valid ? 0 : 1, result.stderr);
+    if (!valid) assert.match(result.stderr, /CLAUDE.md must be a symlink to AGENTS.md/);
+  });
+}
 import { validate as validateTooling, diff as diffTooling } from '../scripts/tooling-drift.mjs';
 const tooling = JSON.parse(readFileSync(new URL('../canon/tooling.json', import.meta.url)));
 test('tooling: registry valid; drift flags unregistered and missing', () => {
@@ -56,9 +77,6 @@ test('tooling: registry valid; drift flags unregistered and missing', () => {
 });
 
 import { inventory } from '../scripts/tooling-drift.mjs';
-import { mkdtempSync, mkdirSync, writeFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 
 test('tooling: hook inventory preserves script names with arguments, quotes and redirects', (t) => {
   const home = mkdtempSync(join(tmpdir(), 'tooling-'));
