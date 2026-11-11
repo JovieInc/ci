@@ -32,8 +32,8 @@ const any = (res, f) => res.some((re) => re.test(f));
 /** files: [{filename,status,additions,deletions}] */
 export function checkPr(files, p, labels = []) {
   if (labels.includes(p.label) || !files.length) return [];
-  const isData = (f) => any(p.data, f.filename) ||
-    (any(p.append, f.filename) && f.deletions === 0 && f.status !== 'removed');
+  const isData = (f) => f.status !== 'removed' && (any(p.data, f.filename) ||
+    (any(p.append, f.filename) && f.deletions === 0));
   if (files.every(isData)) {
     return [`PR changes only data (${files.map((f) => f.filename).slice(0, 3).join(', ')}${files.length > 3 ? ', ...' : ''}). ` +
       'Write it to the runtime store instead of opening a PR (see canon/COMPANY.md "Data vs behaviour"), or label the PR data-exception.'];
@@ -76,7 +76,11 @@ export async function run({ cwd = '.', update = false } = {}) {
   if (r.warn) console.warn(`::warning::data-paths: ${r.warn}`);
   if (process.env.PR_NUMBER && process.env.GH_TOKEN) {
     const labels = JSON.parse(process.env.PR_LABELS || '[]');
-    fails.push(...checkPr(await prFiles(repoFull, process.env.PR_NUMBER, process.env.GH_TOKEN), p, labels));
+    try {
+      fails.push(...checkPr(await prFiles(repoFull, process.env.PR_NUMBER, process.env.GH_TOKEN), p, labels));
+    } catch (error) {
+      fails.push(`PR file validation unavailable: ${error.message}. Check workflow pull-requests: read permissions; no PR verdict was produced.`);
+    }
   }
   return { fails };
 }
