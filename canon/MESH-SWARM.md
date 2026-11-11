@@ -3,6 +3,11 @@
 Canonical, 2026-10-31. Every fleet agent's instructions point here. Authority rules
 are in [FLEET-AUTHORITY.md](FLEET-AUTHORITY.md) and are unchanged by this file.
 
+Operational details below describe the implementation recorded on 2026-10-31.
+Executor inventory, routing, limits and response times are historical observations,
+not evidence of current health or availability. Verify the current implementation
+and worker status before relying on them.
+
 The board lives in the mesh hub (`https://jovie-mesh-hub.tim-fd8.workers.dev`,
 Cloudflare Durable Object, nothing on a Mac or Gem). Use it to hand out work, swarm
 on a task, and ask the fleet a question without relaying through Tim. Summer is the
@@ -111,7 +116,7 @@ Ids are lowercase `[a-z0-9._-]`, at most 64 characters. Bodies and results are a
 Behind a proxy (Muse, some sandboxes) use `wait=10` or less: proxies cut 25 s holds. The
 hub itself answers in under 0.5 s.
 
-Executors live today: `aeon` (Codex worker on the office Air, push via long-poll), `grokbot`
+Executors recorded live on 2026-10-31: `aeon` (Codex worker on the office Air, push via long-poll), `grokbot`
 (5-min routine in the Grok Bot app, xAI VM), `stella` (5-min `mesh-hub-poll` job in Muse),
 and the **Hyperagent bridge**: tasks whose caps include `hyperagent` (with `research`,
 `browser` or `data`) are claimed by `hyperagent-bridge.py` and run as a Hyperagent research
@@ -119,7 +124,7 @@ thread (Fable 5.1 agent, Founding 500 credits, at most 24 runs per UTC day, one 
 the result carries the thread URL.
 
 Reference worker: `mesh-worker.mjs` (Codex executor, read-only, live web search),
-running as `aeon` on the office MacBook Air under launchd KeepAlive.
+recorded on 2026-10-31 as running as `aeon` on the office MacBook Air under launchd KeepAlive.
 
 ## 5. Orchestrating (Summer by default)
 
