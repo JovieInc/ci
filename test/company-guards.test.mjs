@@ -119,3 +119,25 @@ test('schedule-registration: inline marker needs a real reason; plugin is regist
   const r = await srRun({ cwd: new URL('..', import.meta.url).pathname, files: ['guards/run.mjs'] });
   assert.deepEqual(r.fails, []);
 });
+
+test('schedule-registration: flow YAML schedules are detected and require registration', () => {
+  for (const text of [
+    'on: {schedule: [{cron: "0 * * * *"}]}',
+    "on:\n  schedule:\n    - { cron: '0 * * * *' }",
+    "'on': {schedule: [{ 'cron': '0 * * * *' }]}",
+    'on: {schedule: [{"cron": "0 * * * *"}]}',
+  ]) {
+    const sites = scanSites('.github/workflows/flow.yml', text);
+    assert.equal(sites.length, 1, text);
+    assert.equal(srEvaluate({ sites }).length, 1, 'unregistered flow cron must fail');
+  }
+});
+test('schedule-registration: registry source must name the exact file with a valid live clock', () => {
+  const sites = scanSites('wrangler.toml', '[triggers]\ncrons = ["0 * * * *"]');
+  const entry = { status: 'live', trigger: { source: 'wrangler.toml' }, clock: { scheduler: 'cloudflare:shared', whyNotEvent: WHY } };
+  assert.equal(srEvaluate({ sites, registry: [entry] }).length, 0);
+  for (const source of ['workers/other/wrangler.toml', 'wrangler.toml.bak', 'not-wrangler.toml'])
+    assert.equal(srEvaluate({ sites, registry: [{ ...entry, trigger: { source } }] }).length, 1, source);
+  assert.equal(srEvaluate({ sites, registry: [{ ...entry, status: 'retired' }] }).length, 1);
+  assert.equal(srEvaluate({ sites, registry: [{ ...entry, clock: {} }] }).length, 1);
+});

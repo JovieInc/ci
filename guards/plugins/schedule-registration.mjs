@@ -29,7 +29,7 @@ const MARKER = /scheduler:\s*([\w:.-]+)\s+why-not-event:\s*(.{30,}?)(?:\s*-->)?\
 /** Schedule sites in one file: [{key, kind}] (empty when the file defines none). */
 export function scanSites(path, text) {
   const sites = [];
-  if (/^\.github\/workflows\/[^/]+\.ya?ml$/.test(path) && /^\s*-\s*cron:/m.test(text))
+  if (/^\.github\/workflows\/[^/]+\.ya?ml$/.test(path) && /(?:^\s*-\s*|[{,]\s*)["']?cron["']?\s*:/m.test(text))
     sites.push({ key: `github-cron:${path}`, kind: 'github-cron' });
   if (/(?:^|\/)wrangler[\w.-]*\.(?:toml|jsonc?)$/.test(path) && /^\s*"?crons"?\s*[=:]\s*\[\s*["']/m.test(text))
     sites.push({ key: `cloudflare-cron:${path}`, kind: 'cloudflare-cron' });
@@ -81,7 +81,7 @@ export function evaluate({ sites, baseline = [], schedules = {}, registry = [] }
     const ok =
       site.inline ||
       valid(schedules[site.key]) ||
-      registry.some((e) => String(e.trigger?.source ?? '').includes(path));
+      registry.some((e) => e.status === 'live' && valid(e.clock) && e.trigger?.source === path);
     if (!ok)
       fails.push(
         `${site.key}: new schedule has no registration. Register into the platform's shared scheduler instead of owning a timer, or add "scheduler: <id> why-not-event: <why no event/webhook/queue-insert can do it, >=${WHY_MIN} chars>" (comment in the file, or .company-guards/schedules.json for vercel.json).`
