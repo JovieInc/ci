@@ -1,0 +1,47 @@
+{
+  "workdir": ".",
+  "roots": [
+    "apps",
+    "packages",
+    "workers",
+    "scripts"
+  ],
+  "baseline": "config/slop-guard/baseline.json",
+  "ignore": [
+    "(^|/)(\\.next|\\.turbo|drizzle/migrations|generated|storybook-static|playwright-report|\\.vercel)(/|$)",
+    "^apps/(ios|macos|mac)[^/]*/"
+  ],
+  "testPattern": "(?:\\.(?:test|spec|stories)\\.|(?:^|/)(?:__tests__|tests?|e2e|fixtures|__mocks__)/)",
+  "knipArgs": [
+    "--include",
+    "files,exports,types"
+  ],
+  "jscpd": {
+    "paths": [
+      "apps",
+      "packages",
+      "workers",
+      "scripts"
+    ],
+    "ignore": [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/*.test.*",
+      "**/*.spec.*",
+      "**/tests/**",
+      "**/__tests__/**",
+      "**/drizzle/**",
+      "**/storybook-static/**"
+    ]
+  },
+  "knipCommand": [
+    "npx",
+    "--yes",
+    "knip@6.44.0"
+  ],
+  "jscpdCommand": [
+    "npx",
+    "--yes",
+    "jscpd@5.4.2"
+  ]
+}

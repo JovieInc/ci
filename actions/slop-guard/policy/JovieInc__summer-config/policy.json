@@ -1,0 +1,27 @@
+{
+  "workdir": "apps/summer",
+  "roots": [
+    "agent",
+    "scripts",
+    "tests",
+    "evals"
+  ],
+  "baseline": ".slop-baseline.json",
+  "jscpd": {
+    "paths": [
+      "agent",
+      "scripts",
+      "evals"
+    ]
+  },
+  "knipCommand": [
+    "npx",
+    "--yes",
+    "knip@6.44.0"
+  ],
+  "jscpdCommand": [
+    "npx",
+    "--yes",
+    "jscpd@5.4.2"
+  ]
+}
