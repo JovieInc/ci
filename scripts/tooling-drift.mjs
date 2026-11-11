@@ -38,12 +38,23 @@ export function diff(reg, inventory) {
   };
 }
 
+// Inspect command words without expanding variables or executing shell input.
+// Prefer the script operand over its interpreter, flags, or trailing arguments.
+function hookName(command) {
+  const words = (command.match(/(?:[^\s'"\\]|\\.|"(?:[^"\\]|\\.)*"|'[^']*')+/g) || [])
+    .map(word => word.replace(/"((?:[^"\\]|\\.)*)"|'([^']*)'|\\(.)/g,
+      (_, double, single, escaped) => double ?? single ?? escaped));
+  const script = words.find(word => !word.startsWith('-') && /\.(sh|bash|py|mjs|cjs|js)$/.test(word));
+  const executable = words.find(word => !/^[A-Za-z_][A-Za-z0-9_]*=/.test(word));
+  return (script || executable || '').split('/').pop().replace(/\.(sh|bash|py|mjs|cjs|js)$/, '');
+}
+
 export function inventory(home) {
   const ls = (p) => (existsSync(p) ? readdirSync(p) : []);
   const json = (p) => (existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : {});
   const settings = json(join(home, '.claude/settings.json'));
   const hooks = Object.values(settings.hooks || {}).flat().flatMap((g) => g.hooks || [])
-    .map((h) => (h.command || '').split(/\s+/).pop().split('/').pop().replace(/\.(sh|py|mjs)$/, '')).filter(Boolean);
+    .map((h) => hookName(h.command || '')).filter(Boolean);
   return {
     skill: ls(join(home, '.claude/skills')).filter((d) => existsSync(join(home, '.claude/skills', d, 'SKILL.md'))),
     plugin: Object.keys(settings.enabledPlugins || {}).map((k) => k.split('@')[0]),

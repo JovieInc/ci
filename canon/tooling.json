@@ -1986,7 +1986,7 @@
    "id": "worker:hermes-ship-loop",
    "kind": "worker",
    "name": "hermes-ship-loop",
-   "purpose": "Autonomous ship loop (~/.hermes/scripts)",
+   "purpose": "Autonomous ship loop",
    "whenToUse": "Auto-merge pipeline",
    "owner": "Tim",
    "costTokens": 0,
