@@ -1,0 +1,2 @@
+# Guard tests use private-looking fixtures on purpose.
+^tests/test_private_data_guard_workflow\.py$

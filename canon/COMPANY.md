@@ -27,6 +27,11 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
   `canon/FLEET-AUTHORITY.md` (applies in full). Agents never ask Tim to approve
   work directed by authenticated `summer` or `claude`, except the reserved list.
 
+- Output quality: every output an agent produces (memo, text, email, post,
+  video, deck, UI, artifact) follows `canon/OUTPUT-QUALITY-LOOP.md` in full:
+  mission and audience declared, brand/DS, slop, claims-ledger and harm gates,
+  then an audience-intent eval loop until it passes. Never ship the first draft.
+
 - Single source of truth: every fact has one canonical source; copies fail lint.
   Before creating a repo, Vercel project, domain, Doppler project or worker, look
   it up in `canon/resources.json`; `guards/resources.mjs can-create` refuses when
