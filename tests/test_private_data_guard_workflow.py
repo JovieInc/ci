@@ -42,6 +42,10 @@ class PrivateDataGuard(unittest.TestCase):
                "HEAD_SHA": git(self.repo, "rev-parse", "HEAD"), "FAIL_ON_FINDINGS": "true", **(extra_env or {})}
         return subprocess.run(["python3", "-c", SCRIPT], cwd=self.repo, env=env, capture_output=True, text=True)
 
+    def test_tooling_registry_has_no_private_data(self):
+        result = self.run_guard({"canon/tooling.json": (ROOT / "canon/tooling.json").read_text()})
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_clean_change_passes(self):
         self.assertEqual(self.run_guard({"src/a.ts": "export const a = 1;\n"}).returncode, 0)
 

@@ -46,7 +46,7 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
 
-import { mkdtempSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -67,6 +67,39 @@ for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
     if (!valid) assert.match(result.stderr, /CLAUDE.md must be a symlink to AGENTS.md/);
   });
 }
+import { validate as validateTooling, diff as diffTooling } from '../scripts/tooling-drift.mjs';
+const tooling = JSON.parse(readFileSync(new URL('../canon/tooling.json', import.meta.url)));
+test('tooling: registry valid; drift flags unregistered and missing', () => {
+  assert.deepEqual(validateTooling(tooling), []);
+  const e = tooling.entries.find((x) => x.kind === 'mcp' && x.status === 'active');
+  assert.deepEqual(diffTooling(tooling, { mcp: ['brand-new'] }).unregistered, ['mcp:brand-new']);
+  assert.ok(diffTooling(tooling, { mcp: [] }).missing.includes(e.id));
+});
+
+import { inventory } from '../scripts/tooling-drift.mjs';
+
+test('tooling: hook inventory preserves script names with arguments, quotes and redirects', (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'tooling-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  mkdirSync(join(home, '.claude'));
+  const commands = [
+    'bash "$HOME/hooks/first.sh" --quiet',
+    "python3 '/hooks with spaces/second.py' --mode fast",
+    'node --no-warnings /hooks/third.js --config other.js',
+    'node /hooks/fourth.cjs > /tmp/hook.log 2>&1',
+    '"$HOME/hooks/fifth.mjs"',
+    '/hooks/sixth --quiet',
+    '/hooks/first.sh --again',
+  ];
+  writeFileSync(join(home, '.claude/settings.json'), JSON.stringify({
+    hooks: { Stop: [{ hooks: commands.map(command => ({ type: 'command', command })) }] },
+  }));
+  const found = inventory(home);
+  assert.deepEqual(found.hook, ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']);
+  const entries = found.hook.map(name => ({ id: `hook:${name}`, kind: 'hook', name, status: 'active', source: '~/.claude/settings.json' }));
+  assert.deepEqual(diffTooling({ entries }, found), { missing: [], unregistered: [] });
+  assert.deepEqual(diffTooling({ entries: entries.slice(1) }, found).unregistered, ['hook:first']);
+});
 
 import { scanText, compare as vvCompare, isScannable, run as vacuousRun, name as vacuousName } from '../guards/plugins/vacuous-verdict.mjs';
 const guardsReg = JSON.parse(readFileSync(new URL('../canon/guards.json', import.meta.url)));
