@@ -7,6 +7,7 @@
     {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
     {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"},
     {"id": "tracker-registry", "owner": "summer", "mode": "ratchet", "source": "guards/plugins/tracker-registry.mjs"},
-    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"}
+    {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
+    {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"}
   ]
 }
