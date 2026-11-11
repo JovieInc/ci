@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { newBlocking, baselineVerdict, countBySeverity, severityOf } from './ratchet.mjs';
+import { hasCurrentAnalysis, newBlocking, baselineVerdict, countBySeverity, severityOf } from './ratchet.mjs';
 const al = (id, path, sev, rsev = 'warning') => ({ rule: { id, security_severity_level: sev, severity: rsev }, tool: { name: 't' }, most_recent_instance: { location: { path } } });
 test('only new critical/high blocks; existing backlog does not', () => {
   const base = [al('a', 'x', 'critical')];
@@ -14,4 +14,15 @@ test('baseline only shrinks', () => {
   assert.equal(baselineVerdict(countBySeverity([al('a', 'p', 'high')]), b).lowered.high, 1);
   const grown = baselineVerdict({ critical: 4, high: 1, medium: 0, low: 0, total: 5 }, b);
   assert.equal(grown.ok, false);
+});
+
+test('additional instance of same rule and file is new', () => {
+  const a = al('a', 'x', 'high');
+  assert.equal(newBlocking([a, a], [a]).length, 1);
+  assert.equal(newBlocking([a], [a, a]).length, 0);
+});
+test('stale analysis cannot certify current commit', () => {
+  assert.equal(hasCurrentAnalysis([{commit_sha: 'old'}], 'new'), false);
+  assert.equal(hasCurrentAnalysis([{commit_sha: 'new'}], 'new'), true);
+  assert.equal(hasCurrentAnalysis([{commit_sha: undefined}], undefined), false);
 });

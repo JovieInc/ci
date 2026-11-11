@@ -1,0 +1,5 @@
+{
+  "schema": "company-consumers/v1",
+  "repos": ["Jovie", "summer-config", "LogYourBody", "Ops", "symphony-control", "symphony"],
+  "pinFile": ".github/workflows/company-guards.yml"
+}

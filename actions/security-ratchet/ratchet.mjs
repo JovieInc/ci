@@ -15,8 +15,20 @@ export function severityOf(alert) {
 export const keyOf = (a) => `${a.rule?.id}|${a.most_recent_instance?.location?.path}|${a.tool?.name}`;
 
 export function newBlocking(prAlerts, baseAlerts) {
-  const base = new Set(baseAlerts.map(keyOf));
-  return prAlerts.filter((a) => !base.has(keyOf(a)) && BLOCKING.has(severityOf(a)));
+  const base = new Map();
+  for (const a of baseAlerts.filter((a) => BLOCKING.has(severityOf(a)))) {
+    const key = keyOf(a); base.set(key, (base.get(key) || 0) + 1);
+  }
+  return prAlerts.filter((a) => {
+    if (!BLOCKING.has(severityOf(a))) return false;
+    const key = keyOf(a), remaining = base.get(key) || 0;
+    if (remaining) { base.set(key, remaining - 1); return false; }
+    return true;
+  });
+}
+
+export function hasCurrentAnalysis(analyses, sha) {
+  return Boolean(sha) && analyses.some((a) => a.commit_sha === sha);
 }
 
 export function countBySeverity(alerts) {
@@ -69,10 +81,10 @@ async function main() {
       const deadline = Date.now() + Number(process.env.WAIT_MINUTES || 20) * 60000;
       let ready = false;
       while (Date.now() < deadline && !ready) {
-        ready = (await api(`repos/${repo}/code-scanning/analyses?ref=${ref}`)).length > 0;
+        ready = hasCurrentAnalysis(await api(`repos/${repo}/code-scanning/analyses?ref=${ref}`), process.env.GITHUB_SHA);
         if (!ready) await new Promise((r) => setTimeout(r, 30000));
       }
-      if (!ready) return blind('no code-scanning analysis for the PR ref before timeout');
+      if (!ready) return blind('no code-scanning analysis for the current PR commit before timeout');
       const prA = await api(`repos/${repo}/code-scanning/alerts?state=open&ref=${ref}`);
       const baseA = await api(`repos/${repo}/code-scanning/alerts?state=open&ref=${encodeURIComponent('refs/heads/' + base)}`);
       const added = newBlocking(prA, baseA);

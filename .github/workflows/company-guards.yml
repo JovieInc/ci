@@ -1,0 +1,44 @@
+# Shared company guard suite (workflow_call). Pin consumers to a full commit SHA:
+#   uses: JovieInc/ci/.github/workflows/company-guards.yml@<sha>
+# Runs: AGENTS pointer, PR-body @mention allowlist, 500-line ratchet, pin drift,
+# and every module in guards/plugins/. Baselines live in the consumer's .company-guards/.
+name: Company Guards
+
+on:
+  workflow_call:
+    inputs:
+      ci-ref:
+        description: Full SHA of JovieInc/ci this workflow is pinned to (same SHA as the uses line; drift-checked).
+        required: true
+        type: string
+
+permissions: {}
+
+jobs:
+  guards:
+    name: Company guards
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - name: Fetch pinned guard suite
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JovieInc/ci
+          ref: ${{ inputs.ci-ref }}
+          path: .company-ci
+          persist-credentials: false
+      - name: Run guards
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+        run: node .company-ci/guards/run.mjs
+      - name: Pin drift
+        env:
+          CI_PIN: ${{ inputs.ci-ref }}
+          GITHUB_TOKEN: ${{ github.token }}
+        run: node .company-ci/guards/drift.mjs

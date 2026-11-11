@@ -1,0 +1,75 @@
+name: slop-guard
+description: >
+  Company-wide anti-slop ratchets (file size, pass-through modules, single-implementation
+  interfaces, prefix sprawl, knip dead code, jscpd duplication). Policy lives only in this repository
+  (policy/<owner>__<repo>/), including pinned knip/jscpd versions and their configs; the consuming repo
+  owns just its baseline, which may only shrink. Run after the consumer has installed its dependencies.
+inputs:
+  only:
+    description: Comma-separated rules to run (size,prefix,passthrough,single-impl,knip,jscpd). Empty runs all.
+    default: ''
+  auto-shrink:
+    description: >
+      On same-repo pull requests, commit a lowered baseline back to the PR branch when debt was fixed.
+      Fails open: without a token that can write (e.g. the jovie-bot App token) it only warns.
+    default: 'false'
+  token:
+    description: Token used to fetch the base revision and for auto-shrink commits.
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Fetch base revision
+      shell: bash
+      env:
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      run: |
+        set -euo pipefail
+        if [ -n "$BASE_SHA" ]; then
+          git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null || git fetch --no-tags --depth=1 origin "$BASE_SHA"
+        fi
+    - name: Run slop guard
+      shell: bash
+      env:
+        SLOP_ONLY: ${{ inputs.only }}
+        SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
+        SLOP_POLICY_DIR: ${{ github.action_path }}/policy
+        REPO: ${{ github.repository }}
+        BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha || '' }}
+      run: |
+        set -euo pipefail
+        policy="$SLOP_POLICY_DIR/${REPO//\//__}/policy.json"
+        if [ ! -f "$policy" ]; then echo "::error::no slop-guard policy for $REPO; add policy/${REPO//\//__}/policy.json to JovieInc/ci"; exit 1; fi
+        args=(--policy "$policy")
+        if [ -n "$SLOP_ONLY" ]; then args+=(--only "$SLOP_ONLY"); fi
+        # A pull request or merge group always compares to its base; there is no way to skip it.
+        if [ "${{ github.event_name }}" = pull_request ] || [ "${{ github.event_name }}" = merge_group ]; then
+          args+=(--base "$BASE_SHA")
+        fi
+        node "$SLOP_SCRIPT" "${args[@]}"
+    - name: Lower the baseline for fixed debt
+      if: inputs.auto-shrink == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        SLOP_SCRIPT: ${{ github.action_path }}/slop-guard.mjs
+        SLOP_POLICY_DIR: ${{ github.action_path }}/policy
+        BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        REPO: ${{ github.repository }}
+      run: |
+        set -euo pipefail
+        policy="$SLOP_POLICY_DIR/${REPO//\//__}/policy.json"
+        node "$SLOP_SCRIPT" --policy "$policy" --base "$BASE_SHA" --update --print-baseline-path >/tmp/slop-update.out 2>&1 || { echo "::warning::baseline update skipped"; exit 0; }
+        baseline="$(sed -n 's/^baseline-file=//p' /tmp/slop-update.out | tail -1)"
+        [ -n "$baseline" ] || exit 0
+        if git diff --quiet -- "$baseline"; then echo "baseline already minimal"; exit 0; fi
+        rel="$(git ls-files --full-name -- "$baseline")"
+        # Fail open: a missing permission or an API error warns and never fails the check.
+        if sha="$(gh api "repos/$REPO/contents/$rel?ref=$HEAD_REF" --jq .sha)" \
+          && gh api -X PUT "repos/$REPO/contents/$rel" -f message="chore(slop-guard): lower baseline for fixed debt" \
+            -f branch="$HEAD_REF" -f sha="$sha" -f content="$(base64 < "$baseline" | tr -d '\n')" >/dev/null; then
+          echo "baseline lowered on $HEAD_REF"
+        else
+          echo "::warning::slop-guard could not commit the lowered baseline (no write permission?); run the guard with --update locally"
+        fi
