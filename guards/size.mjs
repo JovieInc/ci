@@ -6,6 +6,12 @@ import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 export const LIMIT = 500;
+// NUL-separated, unquoted paths with room for a large monorepo. Node's default
+// 1 MiB exec buffer throws ENOBUFS once `git ls-files` passes ~1 MiB, and the
+// default newline output C-quotes non-ASCII paths so they were never measured.
+const GIT_BUFFER = 256 * 1024 * 1024;
+const gitPaths = (args, cwd) =>
+  execFileSync('git', [...args, '-z'], { cwd, encoding: 'utf8', maxBuffer: GIT_BUFFER }).split('\0').filter(Boolean);
 const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|py|swift|ex|exs|sh|rb|go|rs)$/;
 const SKIP = /(^|\/)(node_modules|vendor|dist|build|\.next|Pods)\/|\.gen\.|\.generated\.|\.min\.|\.d\.ts$|lock/;
 
@@ -48,8 +54,7 @@ export function compare(current, baseline) {
 export function changedFiles(base, cwd = '.') {
   if (!base) return null;
   try {
-    const out = execFileSync('git', ['diff', '--name-only', '--no-renames', base, 'HEAD'], { cwd, encoding: 'utf8' });
-    return new Set(out.split('\n').filter(Boolean));
+    return new Set(gitPaths(['diff', '--name-only', '--no-renames', base, 'HEAD'], cwd));
   } catch {
     return null;
   }
@@ -64,7 +69,7 @@ export function scopeFor(env = process.env, cwd = '.') {
 }
 
 export function run({ cwd = '.', update = false, scope = null } = {}) {
-  const files = execFileSync('git', ['ls-files'], { cwd, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const files = gitPaths(['ls-files'], cwd);
   const current = measure(files, (f) => { try { return readFileSync(`${cwd}/${f}`, 'utf8'); } catch { return null; } });
   const path = `${cwd}/.company-guards/size-baseline.json`;
   if (update) {
