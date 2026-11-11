@@ -20,14 +20,14 @@ const CATALOG = join(HERE, '..', '..', 'canon', 'trackers.json');
 const CODE = /\.(ts|tsx|js|jsx|mjs|cjs|html|vue|svelte|swift|kt)$/;
 const COPY = /\.(md|mdx|tsx|ts|html|json)$/;
 const COPY_PATH = /(legal|privacy|cookie|terms|marketing|landing|content|copy|messages)/i;
-const SKIP = /(^|\/)(node_modules|vendor|dist|build|\.next|Pods|fixtures?|__fixtures__|__mocks__)\/|\.(test|spec|stories)\.|\.min\.|lock|(^|\/)canon\/(privacy\/tracker-registry|trackers)\.json$|(^|\/)\.company-guards\//;
+const SKIP = /(^|\/)(node_modules|vendor|dist|build|\.next|Pods|fixtures?|__fixtures__|__mocks__)\/|\.(test|spec|stories)\.|\.min\.|(^|\/)([^\/]+\.lock(?:\.json)?|(?:package|npm-shrinkwrap|pnpm)-lock\.(?:json|yaml)|yarn\.lock|bun\.lockb?)$|(^|\/)canon\/(privacy\/tracker-registry|trackers)\.json$|(^|\/)\.company-guards\//;
 
 const escape = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 export function compileCatalog(catalog) {
   return catalog.signatures.map((s) => ({
     ...s,
-    res: [...(s.hosts ?? []).map((h) => new RegExp(escape(h), 'i')), ...(s.code ?? []).map((c) => new RegExp(c))],
+    res: [...(s.hosts ?? []).map((h) => new RegExp(`(?<![a-z0-9_-])${escape(h)}(?![a-z0-9_.-])`, 'i')), ...(s.code ?? []).map((c) => new RegExp(c))],
   }));
 }
 
@@ -55,7 +55,7 @@ export function scanFile(path, text, sigs, registry, claims) {
   }
   if (COPY.test(path) && COPY_PATH.test(path)) {
     for (const source of claims) {
-      if (new RegExp(source, 'i').test(text)) {
+      if (new RegExp(source, 'i').test(text.replace(/[’‘]|&(?:apos|rsquo|lsquo);|&#0*(?:39|8216|8217);|&#x0*(?:27|2018|2019);/gi, "'"))) {
         out.push({ key: `claim:${source}:${path}`, message: `${path}: privacy claim /${source}/ cannot be literally true while any pixel runs` });
       }
     }

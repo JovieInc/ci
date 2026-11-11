@@ -1,7 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { approved, compileCatalog, invalidEntries, scanFile } from '../guards/plugins/tracker-registry.mjs';
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { run, approved, compileCatalog, invalidEntries, scanFile } from '../guards/plugins/tracker-registry.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../canon/trackers.json', import.meta.url)));
 const sigs = compileCatalog(catalog);
@@ -33,4 +36,32 @@ test('host approval matches subdomains, not lookalikes', () => {
 });
 test('every catalog signature has an id, category and at least one matcher', () => {
   for (const s of catalog.signatures) assert.ok(s.id && s.category && (s.hosts.length + s.code.length) > 0, s.id);
+});
+
+test('host signatures reject lookalikes and accept real hosts and subdomains', () => {
+  const hosts = compileCatalog({ signatures: [{ id: 'test', hosts: ['leadsy.ai'], code: [] }] });
+  for (const host of ['leadsy.ai', 'cdn.leadsy.ai'])
+    assert.equal(scanFile('a.ts', `"https://${host}/script"`, hosts, null, []).length, 1, host);
+  for (const host of ['notleadsy.ai', 'leadsy.ai.evil.com', 'leadsy.ai-example.com', 'leadsyXai'])
+    assert.equal(scanFile('a.ts', `"https://${host}/script"`, hosts, null, []).length, 0, host);
+});
+test('privacy copy normalizes curly and entity apostrophes', () => {
+  for (const apostrophe of ["'", '’', '&rsquo;', '&apos;', '&#39;', '&#x27;', '&#8217;', '&#x2019;'])
+    assert.equal(scanFile('content/privacy.mdx', `We don${apostrophe}t track you`, sigs, null, claims).length, 1, apostrophe);
+});
+test('tracked source paths containing lock are scanned; lockfiles stay excluded', async () => {
+  const cwd = mkdtempSync(join(tmpdir(), 'tracker-'));
+  try {
+    execFileSync('git', ['init', '-q'], { cwd });
+    for (const file of ['src/Clock.tsx', 'src/blocks/Pixel.tsx', 'src/adblock.ts', 'package-lock.json']) {
+      mkdirSync(join(cwd, file, '..'), { recursive: true });
+      writeFileSync(join(cwd, file), 'fbq("init", id)');
+    }
+    mkdirSync(join(cwd, 'canon/privacy'), { recursive: true });
+    writeFileSync(join(cwd, 'canon/privacy/tracker-registry.json'), '{"vendors":[]}');
+    execFileSync('git', ['add', '.'], { cwd });
+    const result = await run({ cwd });
+    assert.equal(result.count, 3);
+    assert.equal(result.fails.length, 3);
+  } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
