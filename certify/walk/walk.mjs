@@ -31,7 +31,8 @@ export async function loadPlaywright(cwd) {
   const rel = relative(realpathSync(resolve(cwd, 'node_modules')), realpathSync(entry));
   if (rel === '..' || rel.startsWith(`..${sep}`) || isAbsolute(rel)) throw new Error('playwright must be installed in the app repo node_modules');
   // Resolve from the consumer, never the kit's dependency tree.
-  return import(pathToFileURL(entry).href);
+  const pw = await import(pathToFileURL(entry).href);
+  return pw.chromium ? pw : pw.default;
 }
 
 function localSha(cwd) {

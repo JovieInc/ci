@@ -37,11 +37,19 @@ export function validateEvent(event, config) {
 export function buildEvent(input, config, { env = process.env } = {}) {
   if (!nonempty(env.CUSTOMER_VOICE_SALT)) throw new Error('CUSTOMER_VOICE_SALT required');
   if (!nonempty(input.from) || !nonempty(input.text)) throw new Error('sender and text required');
+  if (!nonempty(input.messageId)) throw new Error('messageId required');
   const channel = config.customerVoice?.channels?.find(c => c.id === input.channel);
+  // Transport IDs can resemble contacts (Slack timestamps, numeric IDs, email Message-IDs).
+  // Letter-only hash encoding cannot itself resemble a phone number.
+  // Preserve ordinary IDs; use a stable, scoped opaque reference for contact-shaped IDs.
+  const messageId = redactText(input.messageId) === input.messageId ? input.messageId
+    : `message:${createHash('sha256').update(JSON.stringify([env.CUSTOMER_VOICE_SALT,
+      config.app, input.channel, input.messageId])).digest('hex')
+      .replace(/[0-9a-f]/g, digit => String.fromCharCode(97 + parseInt(digit, 16)))}`;
   const address = /<([^>]+)>/.exec(input.from)?.[1] ?? input.from;
   const event = {
     schema: EVENT_SCHEMA, app: config.app, channel: input.channel, kind: channel?.kind,
-    messageId: input.messageId, receivedAt: input.receivedAt ?? new Date().toISOString(),
+    messageId, receivedAt: input.receivedAt ?? new Date().toISOString(),
     fromHash: createHash('sha256').update(`${env.CUSTOMER_VOICE_SALT}\0${address.trim().toLowerCase()}`).digest('hex'),
     text: redactText(input.text),
     classification: { feedback: channel?.kind === 'chat' ? isFeedbackTurn(input.text) : true,

@@ -70,3 +70,22 @@ test('a channel-validated event can be posted using only the documented sink opt
   assert.equal((await postToSummer(event(), { url: 'https://summer.example.test/voice', token: 'test-token',
     fetchImpl: async () => ({ ok: true, status: 202 }) })).ok, true);
 });
+
+test('transport IDs resembling contacts become stable opaque references without weakening validation', () => {
+  assert.equal(event().messageId, input.messageId);
+  for (const messageId of ['1731000000.123456', '12345678901234567890', '<transport-id@example.test>', 'raw@example.test']) {
+    const build = (cfg = config, channel = input.channel, salt = env) => buildEvent({ ...input, channel, messageId }, cfg, { env: salt });
+    const e = build();
+    assert.match(e.messageId, /^message:[a-p]{64}$/);
+    assert.equal(e.messageId, build().messageId);
+    assert.notEqual(e.messageId, build({ ...config, app: 'another-app' }).messageId);
+    assert.notEqual(e.messageId, build(config, 'chat').messageId);
+    assert.notEqual(e.messageId, build(config, input.channel, { CUSTOMER_VOICE_SALT: 'other-salt' }).messageId);
+    assert.equal(JSON.stringify(e).includes(messageId), false);
+    assert.deepEqual(validateEvent(e, config).errors, []);
+    assert.ok(validateEvent({ ...e, messageId }, config).errors.length);
+  }
+  for (const messageId of ['', null, undefined, 12345678]) {
+    assert.throws(() => buildEvent({ ...input, messageId }, config, { env }), /messageId/);
+  }
+});

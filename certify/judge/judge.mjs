@@ -21,7 +21,7 @@ export async function judgeWalk({ runDir, config, run = runClaude, model = STRON
       if (!stage) { checks.push({ stepId: step.stepId, stageId: step.stageId, verdict: 'fail', reasons: ['unknown stage'] }); continue; }
       let result;
       try {
-        const failure = detect(step.text);
+        const failure = detect(step.text, { extraFailurePatterns: config.verifier?.extraFailurePatterns ?? [] });
         if (failure) result = { verdict: 'fail', reasons: [`DOM failure surface: ${failure.kind}`] };
         else {
           const frames = [];

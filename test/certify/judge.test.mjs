@@ -163,3 +163,18 @@ test('model transport proves nonzero exit, timeout, output bound and success wit
     await assert.rejects(runClaude([], f.cwd, 5000), /output limit/);
   } finally { process.env.PATH = previous; }
 });
+
+for (const pattern of ['penguin service sleeps', { id: 'app.sleep', kind: 'unavailable', pattern: 'penguin service sleeps' }]) {
+  test(`app-specific failure overrides a model pass: ${JSON.stringify(pattern)}`, async t => {
+    const f = await recorded(t);
+    f.config.verifier = { extraFailurePatterns: [pattern] };
+    writeFileSync(join(f.outDir, 'dom/01.txt'), 'Penguin service sleeps');
+    let calls = 0;
+    const result = await judgeWalk({ runDir: f.outDir, config: f.config, ingest,
+      run: async () => { calls++; return envelope({ verdict: 'pass', reasons: ['looks good'] }); } });
+    assert.equal(result.verdict, 'fail');
+    assert.equal(result.stages[0].verdict, 'fail');
+    assert.match(result.stages[0].reasons[0], /DOM failure surface/);
+    assert.equal(calls, 8);
+  });
+}

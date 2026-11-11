@@ -57,7 +57,7 @@ for (const [label, flow, options] of [
 });
 test('Playwright resolves dynamically from the app node_modules', async t => {
   const { cwd } = fixture(t);
-  await assert.rejects(loadPlaywright(cwd), /Cannot find module/);
+  await assert.rejects(loadPlaywright(cwd), /Cannot find module|ENOENT|must be installed in the app repo/);
   const dir = join(cwd, 'node_modules/playwright'); mkdirSync(dir, { recursive: true });
   writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'playwright', type: 'module', exports: './index.mjs' }));
   writeFileSync(join(dir, 'index.mjs'), 'export const chromium = { consumer: true };');
@@ -73,4 +73,13 @@ test('walk CLI validates path and inline config then forwards app-specific optio
   assert.ok(called);
   await assert.rejects(main([], { cwd: f.cwd }), /usage/);
   await assert.rejects(main(['--app-config', 'missing.json', '--out', 'x'], { cwd: f.cwd }), /missing/);
+});
+
+test('Playwright CommonJS forwarding exposes chromium through default export', async t => {
+  const { cwd } = fixture(t);
+  const dir = join(cwd, 'node_modules/playwright'); mkdirSync(dir, { recursive: true });
+  writeFileSync(join(dir, 'package.json'), JSON.stringify({ name: 'playwright', main: 'index.cjs' }));
+  writeFileSync(join(dir, 'index.cjs'), "module.exports = require('./runtime.cjs');");
+  writeFileSync(join(dir, 'runtime.cjs'), "module.exports = Object.fromEntries([['chromium', { consumer: true }]]);");
+  assert.equal((await loadPlaywright(cwd)).chromium.consumer, true);
 });

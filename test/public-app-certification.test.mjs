@@ -1,4 +1,6 @@
 import test from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -139,4 +141,31 @@ test('scaffold: an app that is already configured only gets repo-level files', (
   writeFileSync(join(dir, 'certification/app.json'), '{}');
   const rels = plan({ registry, repo: 'JovieInc/LogYourBody', target: dir, sha: SHA }).map((w) => w.rel);
   assert.deepEqual(rels, ['.github/workflows/public-app-certification.yml']);
+});
+
+// Exercise the workflow's actual CLI, not just the guard's separate implementation.
+test('CLI: grace warns before the deadline, fails at and after it, and never passes unregistered repos', t => {
+  const dir = mkdtempSync(join(tmpdir(), 'pubapp-cli-'));
+  const app = registry.apps.find(a => a.repo === 'JovieInc/LogYourBody');
+  const deadline = Date.parse(app.enforceFrom);
+  assert.ok(Number.isFinite(deadline));
+  const clock = join(dir, 'clock.mjs');
+  const cli = fileURLToPath(new URL('../certify/cli.mjs', import.meta.url));
+  const run = (now, repo = app.repo) => {
+    writeFileSync(clock, `Date.now = () => ${now};`);
+    return spawnSync(process.execPath, ['--import', pathToFileURL(clock).href, cli, 'validate'], {
+      cwd: dir, encoding: 'utf8', env: { ...process.env, GITHUB_REPOSITORY: repo },
+    });
+  };
+  const before = run(deadline - 1);
+  assert.equal(before.status, 0, before.stderr);
+  assert.match(before.stdout, /::warning::.*enforced from/);
+  for (const now of [deadline, deadline + 1]) {
+    const result = run(now);
+    assert.equal(result.status, 1);
+    assert.match(result.stderr, /::error::.*missing/);
+  }
+  const unknown = run(deadline - 1, 'JovieInc/UnregisteredFixture');
+  assert.equal(unknown.status, 1);
+  assert.match(unknown.stderr, /no non-dormant app registered/);
 });
