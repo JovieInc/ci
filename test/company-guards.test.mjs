@@ -60,7 +60,7 @@ for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
     writeFileSync(join(cwd, 'AGENTS.md'), 'Company canon: JovieInc/ci canon/COMPANY.md\n');
     if (target) symlinkSync(target, join(cwd, 'CLAUDE.md'));
     const result = spawnSync(process.execPath, [fileURLToPath(new URL('../guards/run.mjs', import.meta.url))], {
-      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '', GITHUB_REPOSITORY: 'JovieInc/agents-guard-test' },
+      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '', GITHUB_EVENT_NAME: '', GITHUB_REPOSITORY: 'JovieInc/agents-guard-test' },
     });
     const valid = target === null || target === 'AGENTS.md';
     assert.equal(result.status, valid ? 0 : 1, result.stderr);
