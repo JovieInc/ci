@@ -46,6 +46,61 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
 
+import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { execFileSync, spawnSync } from 'node:child_process';
+
+for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
+  test(`agents: CLAUDE.md target ${target}`, (t) => {
+    const cwd = mkdtempSync(join(tmpdir(), 'agents-guard-'));
+    t.after(() => rmSync(cwd, { recursive: true, force: true }));
+    execFileSync('git', ['init', '-q'], { cwd });
+    writeFileSync(join(cwd, 'AGENTS.md'), 'Company canon: JovieInc/ci canon/COMPANY.md\n');
+    if (target) symlinkSync(target, join(cwd, 'CLAUDE.md'));
+    const result = spawnSync(process.execPath, [fileURLToPath(new URL('../guards/run.mjs', import.meta.url))], {
+      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '', GITHUB_REPOSITORY: 'JovieInc/agents-guard-test' },
+    });
+    const valid = target === null || target === 'AGENTS.md';
+    assert.equal(result.status, valid ? 0 : 1, result.stderr);
+    if (!valid) assert.match(result.stderr, /CLAUDE.md must be a symlink to AGENTS.md/);
+  });
+}
+import { validate as validateTooling, diff as diffTooling } from '../scripts/tooling-drift.mjs';
+const tooling = JSON.parse(readFileSync(new URL('../canon/tooling.json', import.meta.url)));
+test('tooling: registry valid; drift flags unregistered and missing', () => {
+  assert.deepEqual(validateTooling(tooling), []);
+  const e = tooling.entries.find((x) => x.kind === 'mcp' && x.status === 'active');
+  assert.deepEqual(diffTooling(tooling, { mcp: ['brand-new'] }).unregistered, ['mcp:brand-new']);
+  assert.ok(diffTooling(tooling, { mcp: [] }).missing.includes(e.id));
+});
+
+import { inventory } from '../scripts/tooling-drift.mjs';
+
+test('tooling: hook inventory preserves script names with arguments, quotes and redirects', (t) => {
+  const home = mkdtempSync(join(tmpdir(), 'tooling-'));
+  t.after(() => rmSync(home, { recursive: true, force: true }));
+  mkdirSync(join(home, '.claude'));
+  const commands = [
+    'bash "$HOME/hooks/first.sh" --quiet',
+    "python3 '/hooks with spaces/second.py' --mode fast",
+    'node --no-warnings /hooks/third.js --config other.js',
+    'node /hooks/fourth.cjs > /tmp/hook.log 2>&1',
+    '"$HOME/hooks/fifth.mjs"',
+    '/hooks/sixth --quiet',
+    '/hooks/first.sh --again',
+  ];
+  writeFileSync(join(home, '.claude/settings.json'), JSON.stringify({
+    hooks: { Stop: [{ hooks: commands.map(command => ({ type: 'command', command })) }] },
+  }));
+  const found = inventory(home);
+  assert.deepEqual(found.hook, ['first', 'second', 'third', 'fourth', 'fifth', 'sixth']);
+  const entries = found.hook.map(name => ({ id: `hook:${name}`, kind: 'hook', name, status: 'active', source: '~/.claude/settings.json' }));
+  assert.deepEqual(diffTooling({ entries }, found), { missing: [], unregistered: [] });
+  assert.deepEqual(diffTooling({ entries: entries.slice(1) }, found).unregistered, ['hook:first']);
+});
+
 import { scanText, compare as vvCompare, isScannable, run as vacuousRun, name as vacuousName } from '../guards/plugins/vacuous-verdict.mjs';
 const guardsReg = JSON.parse(readFileSync(new URL('../canon/guards.json', import.meta.url)));
 
@@ -87,4 +142,57 @@ test('vacuous-verdict: run scans given files and is registered in shadow', async
   const r = await vacuousRun({ cwd: new URL('..', import.meta.url).pathname, files: ['guards/plugins/vacuous-verdict.mjs', 'guards/run.mjs'] });
   assert.deepEqual(r.fails, []);
   assert.equal(guardsReg.guards.find((g) => g.id === vacuousName)?.mode, 'shadow');
+});
+
+import { scanSites, inlineRegistration, evaluate as srEvaluate, run as srRun, name as srName } from '../guards/plugins/schedule-registration.mjs';
+
+const WHY = 'The provider sends no webhook for this state.';
+test('schedule-registration: finds every schedule shape', () => {
+  assert.equal(scanSites('.github/workflows/a.yml', "on:\n  schedule:\n    - cron: '*/5 * * * *'\n")[0].key, 'github-cron:.github/workflows/a.yml');
+  assert.equal(scanSites('workers/x/wrangler.toml', '[triggers]\ncrons = ["* * * * *"]')[0].kind, 'cloudflare-cron');
+  assert.equal(scanSites('apps/web/vercel.json', JSON.stringify({ crons: [{ path: '/api/cron/a', schedule: '* * * * *' }] }))[0].key, 'vercel-cron:apps/web/vercel.json:/api/cron/a');
+  assert.equal(scanSites('u/x.timer', '[Timer]\nOnBootSec=1min')[0].kind, 'systemd-timer');
+  assert.equal(scanSites('u/x.plist', '<key>StartInterval</key><integer>300</integer>')[0].kind, 'launchd');
+  assert.deepEqual(scanSites('.github/workflows/b.yml', 'on:\n  push:\n'), []);
+  assert.deepEqual(scanSites('apps/desktop/e.plist', '<key>com.apple.security.app-sandbox</key>'), []);
+});
+test('schedule-registration: red before green (negative control)', () => {
+  const sites = [{ key: 'github-cron:.github/workflows/new.yml', kind: 'github-cron' }];
+  assert.equal(srEvaluate({ sites }).length, 1, 'unregistered new cron fails');
+  assert.equal(srEvaluate({ sites: [{ ...sites[0], inline: true }] }).length, 0);
+  assert.equal(srEvaluate({ sites, baseline: [sites[0].key] }).length, 0, 'baselined passes');
+  assert.equal(srEvaluate({ sites, schedules: { [sites[0].key]: { scheduler: 'gem:lanes-tick', whyNotEvent: 'short' } } }).length, 1, 'a one-word reason is not a reason');
+  assert.equal(srEvaluate({ sites, schedules: { [sites[0].key]: { scheduler: 'gem:lanes-tick', whyNotEvent: WHY } } }).length, 0);
+  const reg = [{ status: 'live', trigger: { source: '.github/workflows/new.yml' }, clock: { scheduler: 'github:production-continuity', whyNotEvent: WHY } }];
+  assert.equal(srEvaluate({ sites, registry: reg }).length, 0, 'registry clock block registers it');
+  assert.equal(srEvaluate({ sites: [], baseline: ['github-cron:gone.yml'] }).length, 1, 'baseline only shrinks');
+});
+test('schedule-registration: inline marker needs a real reason; plugin is registered in shadow', async () => {
+  assert.ok(inlineRegistration(`# scheduler: gem:lanes-tick why-not-event: ${WHY}`));
+  assert.equal(inlineRegistration('# scheduler: gem:lanes-tick why-not-event: no'), null);
+  assert.equal(guardsReg.guards.find((g) => g.id === srName)?.mode, 'shadow');
+  const r = await srRun({ cwd: new URL('..', import.meta.url).pathname, files: ['guards/run.mjs'] });
+  assert.deepEqual(r.fails, []);
+});
+
+test('schedule-registration: flow YAML schedules are detected and require registration', () => {
+  for (const text of [
+    'on: {schedule: [{cron: "0 * * * *"}]}',
+    "on:\n  schedule:\n    - { cron: '0 * * * *' }",
+    "'on': {schedule: [{ 'cron': '0 * * * *' }]}",
+    'on: {schedule: [{"cron": "0 * * * *"}]}',
+  ]) {
+    const sites = scanSites('.github/workflows/flow.yml', text);
+    assert.equal(sites.length, 1, text);
+    assert.equal(srEvaluate({ sites }).length, 1, 'unregistered flow cron must fail');
+  }
+});
+test('schedule-registration: registry source must name the exact file with a valid live clock', () => {
+  const sites = scanSites('wrangler.toml', '[triggers]\ncrons = ["0 * * * *"]');
+  const entry = { status: 'live', trigger: { source: 'wrangler.toml' }, clock: { scheduler: 'cloudflare:shared', whyNotEvent: WHY } };
+  assert.equal(srEvaluate({ sites, registry: [entry] }).length, 0);
+  for (const source of ['workers/other/wrangler.toml', 'wrangler.toml.bak', 'not-wrangler.toml'])
+    assert.equal(srEvaluate({ sites, registry: [{ ...entry, trigger: { source } }] }).length, 1, source);
+  assert.equal(srEvaluate({ sites, registry: [{ ...entry, status: 'retired' }] }).length, 1);
+  assert.equal(srEvaluate({ sites, registry: [{ ...entry, clock: {} }] }).length, 1);
 });
