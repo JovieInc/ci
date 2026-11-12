@@ -26,7 +26,12 @@ export function classify(registry, actual) {
   }
   for (const r of registry.resources) {
     if (r.status === 'canonical' && actual[r.kind] && !seen.has(`${r.kind}:${r.name.toLowerCase()}`)) {
-      findings.push({ kind: r.kind, name: r.name, type: 'orphaned', proposedAction: 'registry entry has no live resource: remove entry or recreate' });
+      // gh repo list is credential-scoped, capped and excludes archived repos.
+      // Absence from that observation cannot prove a registered repo is gone.
+      const unknown = r.kind === 'github-repo';
+      findings.push({ kind: r.kind, name: r.name, type: unknown ? 'unknown' : 'orphaned', proposedAction: unknown
+        ? 'repository not observed: verify access, archival status and listing coverage before changing the registry'
+        : 'registry entry has no live resource: remove entry or recreate' });
     }
   }
   return findings;
