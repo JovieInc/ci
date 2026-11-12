@@ -46,6 +46,24 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
 
+test('drift scan: unseen GitHub repositories are unknown, not orphaned', () => {
+  const registry = { nonCanonicalGithubOwners: [], resources: [
+    { kind: 'github-repo', name: 'example/visible', status: 'canonical' },
+    { kind: 'github-repo', name: 'example/private', status: 'canonical' },
+    { kind: 'github-repo', name: 'example/beyond-list-limit', status: 'canonical' },
+  ] };
+  const findings = classify(registry, { 'github-repo': ['EXAMPLE/visible'] });
+  assert.deepEqual(findings.map(({ name, type }) => ({ name, type })), [
+    { name: 'example/private', type: 'unknown' },
+    { name: 'example/beyond-list-limit', type: 'unknown' },
+  ]);
+  for (const finding of findings) {
+    assert.match(finding.proposedAction, /verify.*access.*coverage/i);
+    assert.doesNotMatch(finding.proposedAction, /remove entry|recreate/i);
+  }
+  assert.deepEqual(classify(registry, {}), [], 'a skipped source is not a complete inventory');
+});
+
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
