@@ -20,8 +20,9 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
 2. Guards are ratchets: existing violations are baselined in the consumer
    (`.company-guards/*-baseline.json`); new or worse violations fail.
 3. Merging to `main` here triggers `pin-bump.yml`, which opens a PR in every
-   repo in `canon/consumers.json` moving its SHA pin. Consumers never track a
-   branch.
+   repo in `canon/consumers.json` moving its SHA pin, closes the older open
+   bump PRs it supersedes, and enables auto-merge so the pin lands on green.
+   Consumers never track a branch.
 4. Drift check (`guards/drift.mjs`, inside the shared workflow): a repo whose
    pin is more than 72h behind the newest canon/guard commit fails CI.
 
