@@ -46,6 +46,24 @@ test('drift scan: flags unregistered, duplicate, orphaned', () => {
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
 });
 
+test('drift scan: unseen GitHub repositories are unknown, not orphaned', () => {
+  const registry = { nonCanonicalGithubOwners: [], resources: [
+    { kind: 'github-repo', name: 'example/visible', status: 'canonical' },
+    { kind: 'github-repo', name: 'example/private', status: 'canonical' },
+    { kind: 'github-repo', name: 'example/beyond-list-limit', status: 'canonical' },
+  ] };
+  const findings = classify(registry, { 'github-repo': ['EXAMPLE/visible'] });
+  assert.deepEqual(findings.map(({ name, type }) => ({ name, type })), [
+    { name: 'example/private', type: 'unknown' },
+    { name: 'example/beyond-list-limit', type: 'unknown' },
+  ]);
+  for (const finding of findings) {
+    assert.match(finding.proposedAction, /verify.*access.*coverage/i);
+    assert.doesNotMatch(finding.proposedAction, /remove entry|recreate/i);
+  }
+  assert.deepEqual(classify(registry, {}), [], 'a skipped source is not a complete inventory');
+});
+
 import { mkdtempSync, mkdirSync, writeFileSync, rmSync, symlinkSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -99,6 +117,24 @@ test('tooling: hook inventory preserves script names with arguments, quotes and 
   const entries = found.hook.map(name => ({ id: `hook:${name}`, kind: 'hook', name, status: 'active', source: '~/.claude/settings.json' }));
   assert.deepEqual(diffTooling({ entries }, found), { missing: [], unregistered: [] });
   assert.deepEqual(diffTooling({ entries: entries.slice(1) }, found).unregistered, ['hook:first']);
+});
+
+import { policyFor, checkPr, ratchet } from '../guards/plugins/data-paths.mjs';
+const dp = policyFor(JSON.parse(readFileSync(new URL('../canon/data-paths.json', import.meta.url))), 'Jovie');
+const f = (filename, additions = 1, deletions = 0, status = 'modified') => ({ filename, additions, deletions, status });
+test('data-paths: wins-only PR fails, mixed passes, label waives', () => {
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('docs/metrics/wins-latest.json')], dp).length, 1);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('scripts/x.mjs')], dp).length, 0);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl')], dp, ['data-exception']).length, 0);
+});
+test('data-paths: append-only registry row alone fails, edits to rows pass', () => {
+  assert.equal(checkPr([f('canon/automation-registry.jsonl')], dp).length, 1);
+  assert.equal(checkPr([f('canon/automation-registry.jsonl', 1, 1)], dp).length, 0);
+});
+test('data-paths: ratchet only shrinks', () => {
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: [] }).fails.length, 1);
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
+  assert.equal(ratchet([], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
 });
 
 import { scanText, compare as vvCompare, isScannable, run as vacuousRun, name as vacuousName } from '../guards/plugins/vacuous-verdict.mjs';
