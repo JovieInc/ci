@@ -1,4 +1,5 @@
-# When canon/ or guards/ change on main, open a pin-bump PR in every consumer.
+# When canon/ or guards/ change on main, open a pin-bump PR in every consumer, close the older
+# open bumps it supersedes, and enable auto-merge so the pin lands on green with no human.
 # Uses the jovie-bot GitHub App (short-lived token). Needs repo variable JOVIE_BOT_APP_ID and
 # secret JOVIE_BOT_PRIVATE_KEY; without them the job is a no-op.
 name: Pin Bump
@@ -41,6 +42,15 @@ jobs:
             git -C "w-$repo" checkout -q -b "compounding/ci-pin-${SHA:0:8}"
             git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qam "chore(ci): bump company guards pin to ${SHA:0:8}"
             git -C "w-$repo" push -q origin HEAD
-            gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label compounding \
-              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA."
+            pr="$(gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label compounding \
+              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA.")"
+            # The newest pin supersedes every older open bump: an older one can only fail the
+            # 72h drift guard once this commit exists, so it would sit red until a human closed it.
+            gh pr list -R "JovieInc/$repo" --state open --search "head:compounding/ci-pin-" --json number,headRefName \
+              --jq ".[] | select(.headRefName | startswith(\"compounding/ci-pin-\")) | select(.headRefName != \"compounding/ci-pin-${SHA:0:8}\") | .number" |
+              while read -r old; do
+                gh pr close "$old" -R "JovieInc/$repo" --delete-branch --comment "Superseded by $pr (newer canon pin ${SHA:0:8})." || true
+              done
+            # Land on green without a human: the pin bump is a machine change (ratchets only shrink).
+            gh pr merge "$pr" -R "JovieInc/$repo" --auto --squash || echo "$repo: auto-merge unavailable (enable it in repo settings)"
           done
