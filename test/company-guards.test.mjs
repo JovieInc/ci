@@ -78,7 +78,7 @@ for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
     writeFileSync(join(cwd, 'AGENTS.md'), 'Company canon: JovieInc/ci canon/COMPANY.md\n');
     if (target) symlinkSync(target, join(cwd, 'CLAUDE.md'));
     const result = spawnSync(process.execPath, [fileURLToPath(new URL('../guards/run.mjs', import.meta.url))], {
-      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '' },
+      cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: '', GITHUB_EVENT_NAME: '', GITHUB_REPOSITORY: 'JovieInc/agents-guard-test' },
     });
     const valid = target === null || target === 'AGENTS.md';
     assert.equal(result.status, valid ? 0 : 1, result.stderr);
@@ -117,6 +117,24 @@ test('tooling: hook inventory preserves script names with arguments, quotes and 
   const entries = found.hook.map(name => ({ id: `hook:${name}`, kind: 'hook', name, status: 'active', source: '~/.claude/settings.json' }));
   assert.deepEqual(diffTooling({ entries }, found), { missing: [], unregistered: [] });
   assert.deepEqual(diffTooling({ entries: entries.slice(1) }, found).unregistered, ['hook:first']);
+});
+
+import { policyFor, checkPr, ratchet } from '../guards/plugins/data-paths.mjs';
+const dp = policyFor(JSON.parse(readFileSync(new URL('../canon/data-paths.json', import.meta.url))), 'Jovie');
+const f = (filename, additions = 1, deletions = 0, status = 'modified') => ({ filename, additions, deletions, status });
+test('data-paths: wins-only PR fails, mixed passes, label waives', () => {
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('docs/metrics/wins-latest.json')], dp).length, 1);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl'), f('scripts/x.mjs')], dp).length, 0);
+  assert.equal(checkPr([f('canon/wins/wins.jsonl')], dp, ['data-exception']).length, 0);
+});
+test('data-paths: append-only registry row alone fails, edits to rows pass', () => {
+  assert.equal(checkPr([f('canon/automation-registry.jsonl')], dp).length, 1);
+  assert.equal(checkPr([f('canon/automation-registry.jsonl', 1, 1)], dp).length, 0);
+});
+test('data-paths: ratchet only shrinks', () => {
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: [] }).fails.length, 1);
+  assert.equal(ratchet(['canon/wins/a.jsonl'], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
+  assert.equal(ratchet([], dp, { files: ['canon/wins/a.jsonl'] }).fails.length, 0);
 });
 
 import { scanText, compare as vvCompare, isScannable, run as vacuousRun, name as vacuousName } from '../guards/plugins/vacuous-verdict.mjs';
