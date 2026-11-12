@@ -27,7 +27,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && (secrets.RESOURCE_SCAN_GH_TOKEN || github.token) || '' }}
           RECEIPTS: ${{ (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && '--receipts' || '' }}
-        run: node scripts/public-app-scan.mjs $RECEIPTS 2>&1 | tee scan.txt
+        run: node scripts/public-app-scan.mjs ${RECEIPTS:+"$RECEIPTS"} 2>&1 | tee scan.txt
       - name: Open or update issue (scheduled runs)
         if: ${{ always() && github.event_name == 'schedule' }}
         env:
