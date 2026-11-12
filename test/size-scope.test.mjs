@@ -32,7 +32,7 @@ function growOnMain(d) {
   git(d, 'commit', '-qam', 'main growth');
 }
 function guard(d, env) {
-  const r = spawnSync('node', [RUN], { cwd: d, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, ...env } });
+  const r = spawnSync('node', [RUN], { cwd: d, encoding: 'utf8', env: { PATH: process.env.PATH, HOME: process.env.HOME, GITHUB_REPOSITORY: 'JovieInc/ci', ...env } });
   return { code: r.status, out: r.stdout + r.stderr };
 }
 

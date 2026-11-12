@@ -1,0 +1,35 @@
+# Public app certification, static leg (workflow_call). Pin consumers to a full SHA:
+#   uses: JovieInc/ci/.github/workflows/public-app-certification.yml@<sha>
+# Validates every registered app's certification config (no TODO stubs, files exist,
+# stage and data class match canon/public-apps.json). The live leg (walk, frame judge,
+# buyer eval, privacy crawl) runs on the Gem runner and records a receipt as a
+# GitHub deployment (environment "certification"); see canon/PUBLIC-APP-CERTIFICATION.md.
+name: Public App Certification
+on:
+  workflow_call:
+    inputs:
+      ci-ref:
+        description: Full SHA of JovieInc/ci this workflow is pinned to.
+        required: true
+        type: string
+permissions: {}
+jobs:
+  validate:
+    name: Certification config
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JovieInc/ci
+          ref: ${{ inputs.ci-ref }}
+          path: .company-ci
+          persist-credentials: false
+      - name: Validate certification config
+        run: node .company-ci/certify/cli.mjs validate

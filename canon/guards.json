@@ -9,6 +9,8 @@
     {"id": "tracker-registry", "owner": "summer", "mode": "ratchet", "source": "guards/plugins/tracker-registry.mjs"},
     {"id": "data-paths", "owner": "ci", "mode": "ratchet", "source": "guards/plugins/data-paths.mjs"},
     {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
-    {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"}
+    {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"},
+    {"id": "public-app-certification", "owner": "ci", "mode": "enforce", "source": "guards/plugins/public-app-certification.mjs", "note": "Per-app grace until enforceFrom in canon/public-apps.json; dormant apps warn."},
+    {"id": "public-app-launch", "owner": "ci", "mode": "enforce", "source": "scripts/public-app-scan.mjs", "note": "Runs in JovieInc/ci: PRs check every public surface is classified (hermetic); the daily run checks stage public apps have a fresh passing receipt."}
   ]
 }
