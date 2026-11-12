@@ -47,15 +47,30 @@ export function ratchet(tracked, p, baseline) {
   return { fails: cur.filter((f) => !base.has(f)).map((f) => `${f}: new data file in git (baseline may only shrink)`), cur };
 }
 
-async function prFiles(repo, pr, token) {
-  const out = [];
-  for (let page = 1; page < 11; page++) {
-    const r = await fetch(`https://api.github.com/repos/${repo}/pulls/${pr}/files?per_page=100&page=${page}`,
-      { headers: { authorization: `Bearer ${token}`, accept: 'application/vnd.github+json' } });
-    if (!r.ok) throw new Error(`pulls files ${r.status}`);
-    const rows = await r.json(); out.push(...rows); if (rows.length < 100) break;
+// Hermetic: the PR's changed files come from local git, never from the GitHub API,
+// so the guard needs no pull-requests permission and no network. The base is
+// SIZE_BASE_SHA when the caller sets it (same base as the size ratchet), else the
+// pull_request merge commit's first parent (needs checkout fetch-depth >= 2).
+const STATUS = { A: 'added', M: 'modified', D: 'removed', T: 'modified' };
+export function prFilesFromGit(cwd = '.', baseSha = '') {
+  const git = (args) => execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 1 << 28 });
+  if (!baseSha) {
+    const parents = git(['rev-list', '--parents', '-n', '1', 'HEAD']).trim().split(' ').slice(1);
+    if (parents.length < 2) throw new Error('HEAD is not the pull_request merge commit with its base parent (checkout fetch-depth must be >= 2)');
   }
-  return out;
+  const range = [baseSha || 'HEAD^1', 'HEAD'];
+  const files = new Map();
+  const status = git(['diff', '--no-renames', '--name-status', '-z', ...range]).split('\0');
+  for (let i = 0; i + 1 < status.length; i += 2) {
+    const [code, filename] = [status[i], status[i + 1]];
+    files.set(filename, { filename, status: STATUS[code[0]] ?? 'modified', additions: 0, deletions: 0 });
+  }
+  for (const row of git(['diff', '--no-renames', '--numstat', '-z', ...range]).split('\0').filter(Boolean)) {
+    const [add, del, filename] = row.split('\t');
+    const f = files.get(filename);
+    if (f) { f.additions = add === '-' ? 1 : Number(add); f.deletions = del === '-' ? 1 : Number(del); }
+  }
+  return [...files.values()];
 }
 
 export async function run({ cwd = '.', update = false } = {}) {
@@ -74,12 +89,12 @@ export async function run({ cwd = '.', update = false } = {}) {
   }
   fails.push(...r.fails);
   if (r.warn) console.warn(`::warning::data-paths: ${r.warn}`);
-  if (process.env.PR_NUMBER && process.env.GH_TOKEN) {
+  if (process.env.GITHUB_EVENT_NAME === 'pull_request') {
     const labels = JSON.parse(process.env.PR_LABELS || '[]');
     try {
-      fails.push(...checkPr(await prFiles(repoFull, process.env.PR_NUMBER, process.env.GH_TOKEN), p, labels));
+      fails.push(...checkPr(prFilesFromGit(cwd, process.env.SIZE_BASE_SHA), p, labels));
     } catch (error) {
-      fails.push(`PR file validation unavailable: ${error.message}. Check workflow pull-requests: read permissions; no PR verdict was produced.`);
+      fails.push(`PR file validation unavailable: ${error.message}; no PR verdict was produced.`);
     }
   }
   return { fails };
