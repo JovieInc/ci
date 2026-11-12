@@ -4,11 +4,12 @@
 // 1. Classification: every canonical domain and company Vercel project in
 //    canon/resources.json is either a surface of a registered app or listed in
 //    notApps with a reason. A new public surface cannot appear unclassified.
-// 2. Receipts: every app at stage "public" has a passing certification receipt
-//    younger than maxReceiptAgeDays, read from its repo's GitHub deployments
-//    (environment "certification"). Before an app's enforceFrom date a missing
-//    receipt is a warning; after it, a failure. So moving an app to "public"
-//    without a passing receipt fails this scan on the registry PR.
+// 2. Receipts (daily run only, --receipts): every app at stage "public" has a
+//    passing certification receipt younger than maxReceiptAgeDays, read from its
+//    repo's GitHub deployments (environment "certification"). Before an app's
+//    enforceFrom date a missing receipt is a warning; after it, a failure. This
+//    reads the GitHub API, so PR runs skip it and stay hermetic; the daily run
+//    keeps one open issue while any public app lacks a fresh passing receipt.
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
@@ -71,11 +72,11 @@ async function latestReceipt(repo, env, token) {
   return s ? { state: s.state, createdAt: s.created_at, description: s.description } : { state: 'pending', createdAt: d.created_at };
 }
 
-async function main() {
+async function main({ receipts = false } = {}) {
   const registry = read('canon/public-apps.json');
   const fails = classify(registry, read('canon/resources.json'), read('canon/consumers.json'));
   const warns = [];
-  for (const app of registry.apps.filter((a) => a.stage === 'public')) {
+  for (const app of receipts ? registry.apps.filter((a) => a.stage === 'public') : []) {
     let latest;
     try {
       latest = await latestReceipt(app.repo, registry.receiptEnvironment, process.env.GITHUB_TOKEN);
@@ -89,8 +90,8 @@ async function main() {
   }
   for (const w of warns) console.log(`::warning::${w}`);
   for (const f of fails) console.error(`::error::${f}`);
-  console.log(`public-app-scan: ${fails.length ? 'FAIL' : 'ok'} (${fails.length} failing, ${warns.length} warnings)`);
+  console.log(`public-app-scan: ${fails.length ? 'FAIL' : 'ok'} (${fails.length} failing, ${warns.length} warnings${receipts ? '' : '; receipts not checked, daily run only'})`);
   if (fails.length) process.exit(1);
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) await main();
+if (process.argv[1] === fileURLToPath(import.meta.url)) await main({ receipts: process.argv.includes('--receipts') });

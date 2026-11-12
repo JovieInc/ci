@@ -98,8 +98,10 @@ profile, tracker registry, customer channels, waste and capacity ids.
   app surface, or as internal or non-paid with a reason). An unclassified
   surface fails the launch scan.
 - An app at stage `public` needs a passing receipt younger than
-  `maxReceiptAgeDays`. Stage `prelaunch` needs a valid config only. Moving an
-  app to `public` without a passing receipt fails the launch scan.
+  `maxReceiptAgeDays`. Stage `prelaunch` needs a valid config only. PR checks
+  stay hermetic and only classify; the daily scan reads receipts and keeps one
+  open issue (label `public-app-cert`) while any public app lacks a fresh
+  passing receipt.
 - Receipts are data, not code: the runner records them as a GitHub deployment
   on the app repo (environment `certification`, status `success` only for a
   certified receipt, payload = receipt digest and summary). The guard reads

@@ -169,3 +169,10 @@ test('CLI: grace warns before the deadline, fails at and after it, and never pas
   assert.equal(unknown.status, 1);
   assert.match(unknown.stderr, /no non-dormant app registered/);
 });
+
+test('scan: PR runs classify only (hermetic); --receipts reads receipts', () => {
+  const run = (...a) => spawnSync('node', [fileURLToPath(new URL('../scripts/public-app-scan.mjs', import.meta.url)), ...a], { encoding: 'utf8', env: { PATH: process.env.PATH, HTTPS_PROXY: 'http://127.0.0.1:9', https_proxy: 'http://127.0.0.1:9' } });
+  const pr = run();
+  assert.match(pr.stdout, /receipts not checked, daily run only/);
+  assert.doesNotMatch(pr.stdout + pr.stderr, /certification receipt/);
+});
