@@ -40,6 +40,14 @@ test('drift: within grace ok, stale fails', () => {
   assert.equal(evaluate('p', c, now).ok, true);
   assert.equal(evaluate('p', c, Date.parse('2026-11-05T00:00:00Z')).ok, false);
 });
+test('drift: a pin past the newest canon/guard commit is current, not 30 behind', () => {
+  const c = [{ sha: 'g2', date: '2026-10-20T00:00:00Z' }, { sha: 'g1', date: '2026-10-10T00:00:00Z' }];
+  const now = Date.parse('2026-11-14T00:00:00Z');
+  assert.equal(evaluate('head', c, now).ok, false); // path-only reading: the pin is not among those commits
+  assert.equal(evaluate('head', c, now, new Set()).ok, true); // pin is main's HEAD: nothing ahead of it
+  assert.equal(evaluate('mid', c, now, new Set(['g2', 'x'])).ok, false); // g2 is still unpulled and stale
+  assert.equal(evaluate('mid', c, Date.parse('2026-10-21T00:00:00Z'), new Set(['g2'])).ok, true); // within grace
+});
 test('drift scan: flags unregistered, duplicate, orphaned', () => {
   const f = classify(reg, { 'vercel-project': ['jovie', 'web', 'mystery'], 'github-repo': ['meetjovie/x'] });
   const types = f.map((x) => `${x.name}:${x.type}`);
