@@ -65,3 +65,15 @@ test('tracked source paths containing lock are scanned; lockfiles stay excluded'
     assert.equal(result.fails.length, 3);
   } finally { rmSync(cwd, { recursive: true, force: true }); }
 });
+
+test('run lists a tracked tree larger than the 1 MiB default git buffer', async (t) => {
+  const d = mkdtempSync(join(tmpdir(), 'tracker-registry-big-'));
+  t.after(() => rmSync(d, { recursive: true, force: true }));
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: d });
+  const blob = execFileSync('git', ['hash-object', '-w', '--stdin'], { cwd: d, input: 'x\n', encoding: 'utf8' }).trim();
+  const dir = 'apps/web/components/'.padEnd(240, 'n');
+  const entries = Array.from({ length: 5000 }, (_, i) => `100644 ${blob}\t${dir}/C${i}.tsx`).join('\n') + '\n';
+  execFileSync('git', ['update-index', '--index-info'], { cwd: d, input: entries });
+  const { fails } = await run({ cwd: d });
+  assert.ok(Array.isArray(fails));
+});
