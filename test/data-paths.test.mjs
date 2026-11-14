@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { checkPr, prFilesFromGit } from '../guards/plugins/data-paths.mjs';
+import { checkPr, prFilesFromGit, run } from '../guards/plugins/data-paths.mjs';
 import { execFileSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -52,4 +52,16 @@ test('prFilesFromGit uses an explicit base when the caller gives one', (t) => {
   git('checkout', '-q', 'pr');
   const base = git('rev-parse', 'HEAD~1').trim();
   assert.deepEqual(prFilesFromGit(d, base).map((f) => f.filename).sort(), ['events.jsonl', 'new.json', 'old.json']);
+});
+
+test('run lists a tracked tree larger than the 1 MiB default git buffer', async (t) => {
+  const d = mkdtempSync(join(tmpdir(), 'data-paths-big-'));
+  t.after(() => rmSync(d, { recursive: true, force: true }));
+  execFileSync('git', ['init', '-q', '-b', 'main'], { cwd: d });
+  const blob = execFileSync('git', ['hash-object', '-w', '--stdin'], { cwd: d, input: 'x\n', encoding: 'utf8' }).trim();
+  const dir = 'apps/web/components/'.padEnd(240, 'n');
+  const entries = Array.from({ length: 5000 }, (_, i) => `100644 ${blob}\t${dir}/C${i}.tsx`).join('\n') + '\n';
+  execFileSync('git', ['update-index', '--index-info'], { cwd: d, input: entries });
+  const { fails } = await run({ cwd: d });
+  assert.ok(Array.isArray(fails));
 });

@@ -78,7 +78,7 @@ export async function run({ cwd = '.', update = false } = {}) {
   const p = policyFor(JSON.parse(readFileSync(POLICY, 'utf8')), repoFull.split('/')[1] ?? '');
   const fails = [];
   const bpath = join(cwd, '.company-guards/data-paths-baseline.json');
-  const tracked = execFileSync('git', ['ls-files'], { cwd, encoding: 'utf8' }).split('\n').filter(Boolean);
+  const tracked = execFileSync('git', ['ls-files'], { cwd, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter(Boolean);
   const baseline = existsSync(bpath) ? JSON.parse(readFileSync(bpath, 'utf8')) : null;
   const r = ratchet(tracked, p, baseline);
   if (update) {
