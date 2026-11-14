@@ -75,7 +75,7 @@ export async function run({ cwd = '.', baselineDir = '.company-guards', update =
   const registry = existsSync(regPath) ? JSON.parse(readFileSync(regPath, 'utf8')) : null;
   const sigs = compileCatalog(catalog);
   const claims = [...new Set([...catalog.banned_claims, ...(registry?.banned_claims ?? [])])];
-  const files = execFileSync('git', ['ls-files'], { cwd, encoding: 'utf8' }).split('\n').filter((f) => f && !SKIP.test(f));
+  const files = execFileSync('git', ['ls-files'], { cwd, encoding: 'utf8', maxBuffer: 1 << 28 }).split('\n').filter((f) => f && !SKIP.test(f));
   const findings = [];
   for (const f of files) {
     if (!CODE.test(f) && !COPY.test(f)) continue;
