@@ -5,10 +5,13 @@ import { fileURLToPath } from 'node:url';
 
 export const MAX_AGE_H = 72;
 
-export function evaluate(pinned, commits, now = Date.now()) {
+export function evaluate(pinned, commits, now = Date.now(), ahead = null) {
   // commits: newest-first list of {sha, date} touching canon/guards on main.
+  // ahead: SHAs on main the pin does not contain (compare pin...main), or null when unknown.
+  // With it, a pin on a commit that touched neither canon nor guards (main's HEAD, say) is current;
+  // without it, a pin is only found when it is itself one of those commits.
   const idx = commits.findIndex((c) => c.sha === pinned);
-  const unpulled = idx < 0 ? commits : commits.slice(0, idx);
+  const unpulled = ahead ? commits.filter((c) => ahead.has(c.sha)) : idx < 0 ? commits : commits.slice(0, idx);
   if (!unpulled.length) return { ok: true };
   const oldest = unpulled[unpulled.length - 1];
   const ageH = (now - Date.parse(oldest.date)) / 3600_000;
@@ -34,7 +37,11 @@ async function main() {
       for (const c of await api(`commits?sha=main&path=${encodeURIComponent(p)}&per_page=30`)) seen.set(c.sha, { sha: c.sha, date: c.commit.committer.date });
     }
     const commits = [...seen.values()].sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
-    const r = evaluate(pinned, commits);
+    // compare lists at most 250 commits; past that the pin is far behind, so the path-only reading stands.
+    const cmp = await api(`compare/${encodeURIComponent(pinned)}...main`);
+    const listed = Array.isArray(cmp.commits) ? cmp.commits : [];
+    const ahead = (cmp.ahead_by ?? 0) <= listed.length ? new Set(listed.map((c) => c.sha)) : null;
+    const r = evaluate(pinned, commits, Date.now(), ahead);
     if (!r.ok) { console.error(`pin-drift: ${r.reason}`); process.exit(1); }
     console.log('pin-drift: ok');
   } catch (e) {
