@@ -73,6 +73,26 @@ in `canon/data-paths.json` only; label `data-exception` waives one PR.
   layer, a durable guard, and before/after numbers in the wins store. A standing
   share of fleet capacity ships waste fixes every day.
 
+## Compounding reliability and performance
+
+Every part of the company should become more reliable and performant over time.
+Use the existing waste-fix loop and verification contract below:
+
+- Build depth on high-risk, high-frequency customer and shipping paths first.
+  Rank bounded improvements by expected repeated time/cost saved, failure risk,
+  evidence and opportunity cost. Run independent work in parallel when it does
+  not compete for ownership or constrained capacity; existing limits still apply.
+- Measure a reliable baseline, then compare outcomes with the same method and
+  representative workload: correctness, failures detected, latency and cost.
+  Prove real failure detection with negative controls before trusting green;
+  speed or cost gains never justify weaker correctness or security.
+- Raise reliability and performance floors only from verified outcomes. Missing,
+  skipped or blocked evidence remains unknown. Turn escaped failures into reusable
+  regressions that prove both the repair and the detector.
+- Once a segment is proven, carry its contracts and regressions to the next
+  important segment, verify them there, and repeat across the company. Widen the
+  proven approach instead of endlessly polishing one local optimum.
+
 ## Verification: verify the outcome, not the action
 
 A check that confirms something happened (a 200, a visible element, exit 0, a
