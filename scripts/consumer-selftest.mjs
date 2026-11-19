@@ -2,7 +2,7 @@
 // Read-only fleet qualification: pinned vs candidate guards, never drift.mjs.
 // Mission: expose new enforcing failures before a pin bump. Audience: CI owners.
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -118,6 +118,12 @@ export async function selftest({ repos, allowUnreachable = false, checkout = ROO
       const consumer = join(scratch, 'consumer');
       const auth = gitEnv(env);
       await clone(repo, consumer, auth);
+      // A consumer that never wired Company guards cannot be turned red by a guard change;
+      // report it (Pin Bump also logs "company guards not wired") instead of failing.
+      if (!existsSync(join(consumer, config.pinFile))) {
+        reports.push({ repo, verified: false, notWired: true, newFailures: [], reason: `company guards not wired (no ${config.pinFile})` });
+        continue;
+      }
       stage = 'candidate guard run';
       const runtime = guardEnv(env, repo);
       candidate = await runGuards(checkout, consumer, runtime);
@@ -137,7 +143,7 @@ export async function selftest({ repos, allowUnreachable = false, checkout = ROO
     } finally { rmSync(scratch, { recursive: true, force: true }); }
   }
   return { reports, exitCode: reports.some((r) => r.verified ? r.newFailures.length > 0 :
-    !(allowUnreachable && r.unreachable)) ? 1 : 0 };
+    !(r.notWired || (allowUnreachable && r.unreachable))) ? 1 : 0 };
 }
 
 export function formatReport(report) {
