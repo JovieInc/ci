@@ -234,6 +234,9 @@
   {"kind": "domain", "name": "jovie.fm", "status": "canonical", "owner": "grok-bot:798b223e-a12a-473c-a19f-5e600e5e168c", "family": "jovie"},
   {"kind": "domain", "name": "meetjovie.com", "status": "canonical", "owner": "grok-bot:798b223e-a12a-473c-a19f-5e600e5e168c", "family": "jovie"},
   {"kind": "domain", "name": "www.meetjovie.com", "status": "canonical", "owner": "grok-bot:798b223e-a12a-473c-a19f-5e600e5e168c", "family": "jovie"},
-  {"kind": "domain", "name": "shouldimakeamusicvideo.com", "status": "canonical", "owner": "person:tim", "family": "shouldimake"}
+  {"kind": "domain", "name": "shouldimakeamusicvideo.com", "status": "canonical", "owner": "person:tim", "family": "shouldimake"},
+  {"kind": "linear-team", "id": "JOV", "name": "JOV", "aliases": ["Jovie"], "status": "canonical", "owner": "person:tim", "purposeKey": "linear-team-jov", "family": "jovie", "linear": "JOV-13100", "note": "Existing engineering team. Seeded by JOV-13100; do not delete, archive, rename, or move issues to satisfy the linear-team rule (Tim per-item yes)."},
+  {"kind": "linear-team", "id": "LYB", "name": "LYB", "status": "canonical", "owner": "person:tim", "purposeKey": "linear-team-lyb", "family": "lyb", "linear": "JOV-13100", "note": "Existing team. Seeded by JOV-13100; do not move LYB issues or rename the team as part of this rule (Tim per-item yes)."},
+  {"kind": "linear-team", "id": "SYM", "name": "SYM", "aliases": ["Symphony"], "status": "canonical", "owner": "person:tim", "purposeKey": "linear-team-sym", "family": "symphony", "linear": "JOV-13100", "note": "Existing team. Seeded by JOV-13100; do not move SYM issues or rename the team as part of this rule (Tim per-item yes)."}
  ]
 }

@@ -25,6 +25,24 @@ test('resources: same purpose or alias refused, new purpose ok', () => {
   assert.equal(canCreate(reg, { kind: 'vercel-project', name: 'web', purposeKey: 'x' }).ok, false);
   assert.equal(canCreate(reg, { kind: 'vercel-project', name: 'brand-new', purposeKey: 'brand-new' }).ok, true);
 });
+test('linear-team: canon seeds JOV, LYB, SYM; refuses repo-shaped and disguised names; allows a justified people group', () => {
+  const teams = reg.resources.filter((e) => e.kind === 'linear-team');
+  assert.deepEqual(teams.map((e) => e.name).sort(), ['JOV', 'LYB', 'SYM']);
+  for (const name of ['ci', 'LogYourBody', 'lyb-eng']) {
+    const result = canCreate(reg, { kind: 'linear-team', name });
+    assert.equal(result.ok, false, name);
+    assert.match(result.reason, /reuse the JOV team/);
+  }
+  const allowed = canCreate(reg, {
+    kind: 'linear-team',
+    name: 'Privacy Engineering',
+    purposeKey: 'linear-team-privacy-engineering',
+    peopleGroupNeed: 'privacy',
+    reasonIssue: 'JOV-13100',
+    enrollDriftGuardrail: 'JOV-13101',
+  });
+  assert.equal(allowed.ok, true, allowed.reason);
+});
 test('size: new over-limit fails, growth fails, shrink ok', () => {
   const big = 'x\n'.repeat(600);
   const cur = measure(['a.ts', 'b.ts', 'c.md'], () => big);

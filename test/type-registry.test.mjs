@@ -2,6 +2,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { keyOf, validate, canCreate, drift } from '../guards/resources.mjs';
 
 const fx = () => ({
@@ -101,4 +103,69 @@ test('drift flags unregistered live resources, renames and live collisions', () 
 test('the committed canon validates', () => {
   const canon = JSON.parse(readFileSync(new URL('../canon/resources.json', import.meta.url), 'utf8'));
   assert.deepEqual(validate(canon).fails, []);
+});
+
+function fxTeams() {
+  const r = fx();
+  r.resources.push(
+    { kind: 'github-repo', name: 'JovieInc/LogYourBody', family: 'lyb', purposeKey: 'lyb-app', status: 'canonical', owner: 'person:tim' },
+    { kind: 'github-repo', name: 'JovieInc/ci', family: 'ci', purposeKey: 'company-ci', status: 'canonical', owner: 'person:tim' },
+    { kind: 'github-repo', name: 'JovieInc/symphony', family: 'symphony', purposeKey: 'symphony-orchestrator', status: 'canonical', owner: 'person:tim' },
+    { kind: 'github-repo', name: 'JovieInc/symphony-control', family: 'symphony', purposeKey: 'symphony-control', status: 'canonical', owner: 'person:tim' },
+    { kind: 'linear-team', id: 'JOV', name: 'JOV', aliases: ['Jovie'], family: 'jovie', purposeKey: 'linear-team-jov', status: 'canonical', owner: 'person:tim' },
+    { kind: 'linear-team', id: 'LYB', name: 'LYB', family: 'lyb', purposeKey: 'linear-team-lyb', status: 'canonical', owner: 'person:tim' },
+    { kind: 'linear-team', id: 'SYM', name: 'SYM', aliases: ['Symphony'], family: 'symphony', purposeKey: 'linear-team-sym', status: 'canonical', owner: 'person:tim' },
+  );
+  return r;
+}
+
+const peopleGroup = {
+  kind: 'linear-team',
+  name: 'Privacy Engineering',
+  purposeKey: 'linear-team-privacy-engineering',
+  family: 'privacy-engineering',
+  peopleGroupNeed: 'privacy',
+  reasonIssue: 'JOV-13100',
+  enrollDriftGuardrail: 'JOV-13101',
+};
+
+test('linear-team can-create refuses a repo or product shaped name', () => {
+  const r = fxTeams();
+  assert.deepEqual(validate(r).fails, []);
+  for (const name of ['ci', 'LogYourBody', 'jovie', 'symphony-control', 'summer-config']) {
+    const result = canCreate(r, { kind: 'linear-team', name });
+    assert.equal(result.ok, false, name);
+    assert.match(result.reason, /reuse the JOV team/);
+  }
+});
+
+test('linear-team can-create allows a durable people group with deterministic justification', () => {
+  const result = canCreate(fxTeams(), peopleGroup);
+  assert.equal(result.ok, true, result.reason);
+  assert.equal(canCreate(fxTeams(), { ...peopleGroup, peopleGroupNeed: undefined }).ok, false);
+  assert.equal(canCreate(fxTeams(), { ...peopleGroup, peopleGroupNeed: 'because we have a new repo' }).ok, false);
+  assert.equal(canCreate(fxTeams(), { ...peopleGroup, reasonIssue: 'pending' }).ok, false);
+  assert.equal(canCreate(fxTeams(), { ...peopleGroup, enrollDriftGuardrail: '' }).ok, false);
+});
+
+test('linear-team can-create refuses a disguised twin of an existing team even with justification', () => {
+  const r = fxTeams();
+  for (const name of ['lyb-eng', 'Jovie-Platform', 'symphony-2', 'JOV-2', 'SYM']) {
+    const result = canCreate(r, { ...peopleGroup, name, purposeKey: `linear-team-${name}` });
+    assert.equal(result.ok, false, `${name}: ${result.reason}`);
+    assert.match(result.reason, /disguises existing team\/repo\/product|already owns/);
+  }
+});
+
+test('linear-team can-create CLI refuses repo names and disguised twins, allows a justified people group', () => {
+  const bin = fileURLToPath(new URL('../guards/resources.mjs', import.meta.url));
+  const run = (args) => spawnSync(process.execPath, [bin, 'can-create', ...args], { encoding: 'utf8' });
+  const refuse = run(['--kind', 'linear-team', '--name', 'ci']);
+  assert.equal(refuse.status, 1);
+  assert.match(refuse.stderr, /reuse the JOV team/);
+  const twin = run(['--kind', 'linear-team', '--name', 'lyb-eng', '--people-group-need', 'privacy', '--reason-issue', 'JOV-13100', '--enroll-drift-guardrail', 'JOV-13101']);
+  assert.equal(twin.status, 1);
+  assert.match(twin.stderr, /disguises existing team\/repo\/product|already owns/);
+  const allow = run(['--kind', 'linear-team', '--name', 'Privacy Engineering', '--purpose-key', 'linear-team-privacy-engineering', '--people-group-need', 'privacy', '--reason-issue', 'JOV-13100', '--enroll-drift-guardrail', 'JOV-13101']);
+  assert.equal(allow.status, 0, allow.stderr);
 });

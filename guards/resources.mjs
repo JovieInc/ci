@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Type registry guard (company-resource-registry/v2). One namespace for every named
 // entity: agents, bots, rooms, the Eve agent, repos, Vercel projects, domains.
+// linear-team: people groups only (JOV-13100); can-create is fail-closed without a structured justification.
 //   validate                 -> registry is internally collision-free (CI, deterministic)
 //   can-create --kind K --name N [--purpose-key P] [--family F] [--supersedes REF]
 //                            -> refuse a create that would duplicate or confuse (creation flows)
@@ -124,11 +125,66 @@ export function validate(reg) {
   return { fails: out, warnings: [...new Set(warnings)] };
 }
 
-export function canCreate(reg, { kind, name, purposeKey, family, supersedes }) {
+const LINEAR_TEAM_NEEDS = new Set(['workflow', 'cadence', 'privacy']);
+const LINEAR_ISSUE_KEY = /^[A-Z]+-\d+$/;
+
+// Product keys named in JOV-13100. Repo and existing-team keys are derived from the registry.
+const LINEAR_TEAM_PRODUCT_KEYS = ['jovie', 'lyb', 'symphony'];
+
+function linearTeamBlockedKeys(reg) {
+  const keys = new Set(LINEAR_TEAM_PRODUCT_KEYS);
+  for (const e of reg.resources || []) {
+    if (e.kind === 'linear-team' || e.kind === 'github-repo' || e.kind === 'origin-repo') {
+      for (const nm of names(e)) {
+        const k = keyOf(e.kind, nm);
+        if (k) keys.add(k);
+      }
+    }
+    if (e.family && (e.kind === 'linear-team' || e.kind === 'github-repo')) {
+      const fk = keyOf('linear-team', e.family);
+      if (fk) keys.add(fk);
+    }
+  }
+  return keys;
+}
+
+// Exact key, a name token, or a suffix on a blocked key of length >= 3 (lybeng, jovieplatform).
+// Prefix length 2 is skipped so a team like "Circle Leads" is not refused because "ci" is a repo.
+function disguisedLinearTeam(name, blocked) {
+  const k = keyOf('linear-team', name);
+  if (blocked.has(k)) return k;
+  for (const token of tokensOf(name)) {
+    if (blocked.has(token)) return token;
+  }
+  const prefixes = [...blocked].filter((b) => b.length >= 3).sort((a, b) => b.length - a.length);
+  for (const b of prefixes) {
+    if (k.startsWith(b) && k !== b) return b;
+  }
+  return null;
+}
+
+function linearTeamJustification({ peopleGroupNeed, reasonIssue, enrollDriftGuardrail }) {
+  if (!LINEAR_TEAM_NEEDS.has(peopleGroupNeed)) {
+    return 'linear-team create requires --people-group-need workflow|cadence|privacy (a durable people group with its own workflow, cadence, or privacy need; not a repo or product)';
+  }
+  if (!LINEAR_ISSUE_KEY.test(reasonIssue || '')) {
+    return 'linear-team create requires --reason-issue <LINEAR-KEY> recording the people-group reason (workflow, cadence, or privacy)';
+  }
+  if (!LINEAR_ISSUE_KEY.test(enrollDriftGuardrail || '')) {
+    return 'linear-team create requires --enroll-drift-guardrail <LINEAR-KEY> (enroll in JOV-13101 or its successor before agents may write to the team)';
+  }
+  return null;
+}
+
+export function canCreate(reg, { kind, name, purposeKey, family, supersedes, peopleGroupNeed, reasonIssue, enrollDriftGuardrail }) {
   const cand = { kind, name, status: 'canonical', family, supersedes, purposeKey };
   const k = keyOf(kind, name);
   if (!kind || !name) return { ok: false, reason: 'kind and name are required' };
   if (PLACEHOLDERS.has(k)) return { ok: false, reason: `"${name}" is a placeholder name; pick a unique canonical name` };
+  if (kind === 'linear-team') {
+    const hit = disguisedLinearTeam(name, linearTeamBlockedKeys(reg));
+    if (hit) return { ok: false, reason: `linear-team "${name}" collapses to or disguises existing team/repo/product "${hit}"; reuse the JOV team and apply product:* / repo:* labels (a refusal is never something to rename around)` };
+  }
   const rv = reservedViolation(reg, cand, name);
   if (rv) return { ok: false, reason: rv };
   const warnings = [];
@@ -149,6 +205,10 @@ export function canCreate(reg, { kind, name, purposeKey, family, supersedes }) {
         warnings.push(`close to ${refOf(e)} "${e.name}"`);
       }
     }
+  }
+  if (kind === 'linear-team') {
+    const why = linearTeamJustification({ peopleGroupNeed, reasonIssue, enrollDriftGuardrail });
+    if (why) return { ok: false, reason: why };
   }
   return { ok: true, warnings };
 }
@@ -186,7 +246,7 @@ function main(argv) {
     process.exit(fails.length ? 1 : 0);
   }
   if (cmd === 'can-create') {
-    const r = canCreate(reg, { kind: get('--kind'), name: get('--name'), purposeKey: get('--purpose-key'), family: get('--family'), supersedes: get('--supersedes') });
+    const r = canCreate(reg, { kind: get('--kind'), name: get('--name'), purposeKey: get('--purpose-key'), family: get('--family'), supersedes: get('--supersedes'), peopleGroupNeed: get('--people-group-need'), reasonIssue: get('--reason-issue'), enrollDriftGuardrail: get('--enroll-drift-guardrail') });
     if (!r.ok) { console.error(`resource-guard: refusing create: ${r.reason}`); process.exit(1); }
     for (const w of r.warnings || []) console.log(`warning: ${w}`);
     console.log('ok: no conflicting entry; add the new entry to canon/resources.json in the same change');
@@ -198,7 +258,7 @@ function main(argv) {
     console.log(JSON.stringify({ findings: f }, null, 1));
     process.exit(f.length ? 3 : 0);
   }
-  console.error('usage: resources.mjs validate | can-create --kind K --name N [--purpose-key P] [--family F] [--supersedes REF] | drift --observed FILE [--complete k1,k2]');
+  console.error('usage: resources.mjs validate | can-create --kind K --name N [--purpose-key P] [--family F] [--supersedes REF] [--people-group-need workflow|cadence|privacy] [--reason-issue KEY] [--enroll-drift-guardrail KEY] | drift --observed FILE [--complete k1,k2]');
   process.exit(2);
 }
 
