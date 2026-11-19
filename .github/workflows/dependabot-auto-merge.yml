@@ -14,6 +14,15 @@ on:
         required: false
         type: string
         default: 'merge-queue,tim-approved'
+      auto_merge_method:
+        description: >-
+          JOV-13093: when set (squash, merge or rebase), arm native auto-merge on
+          patch/minor bumps with this method so they land on green with no
+          human. Empty (default) keeps today's behaviour for consumers whose own
+          enrollment controller admits the PR (LogYourBody).
+        required: false
+        type: string
+        default: ''
 
 permissions: {}
 
@@ -77,6 +86,17 @@ jobs:
             [ -n "$label" ] || continue
             gh pr edit --add-label "$label" "$PR_URL" || true
           done
+
+      - name: Arm auto-merge for patch + minor
+        if: (steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor') && inputs.auto_merge_method != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          METHOD: ${{ inputs.auto_merge_method }}
+        run: |
+          set -euo pipefail
+          case "$METHOD" in squash|merge|rebase) ;; *) echo "::error::auto_merge_method must be squash, merge or rebase (got '$METHOD')"; exit 1 ;; esac
+          gh pr merge --auto "--$METHOD" "$PR_URL" || echo "::warning::auto-merge unavailable for $PR_URL (enable allow_auto_merge in repo settings)"
 
       - name: Hold major upgrades as drafts for qualification
         if: steps.meta.outputs.update-type == 'version-update:semver-major'
