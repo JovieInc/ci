@@ -128,6 +128,56 @@
       "kind": "github-repo",
       "name": "JovieInc/ovie",
       "reason": "archived; Ovie is the internal /hud route of jovie-web, Tim only"
+    },
+    {
+      "kind": "vercel-project",
+      "name": "jovie-eve-shadow",
+      "reason": "internal: Summer (Eve agent) app serving summer.jov.ie, Tim only (canonical in registry v2; the old summer entry is missing)"
+    },
+    {
+      "kind": "domain",
+      "name": "www.jov.ie",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "support.jov.ie",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "jovie.app",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "jovie.fm",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "meetjovie.com",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "www.meetjovie.com",
+      "reason": "alias domain of Vercel project jovie (same deployment as jov.ie); certified through jovie-web"
+    },
+    {
+      "kind": "domain",
+      "name": "docs.jov.ie",
+      "reason": "jovie-docs public docs, no signup or payment (same classification as Vercel project jovie-docs)"
+    },
+    {
+      "kind": "domain",
+      "name": "application.jov.ie",
+      "reason": "legacy personal JovieApplication site (itstimwhite/JovieApplication), not a company app"
+    },
+    {
+      "kind": "domain",
+      "name": "shouldimakeamusicvideo.com",
+      "reason": "domain of the dormant should-i-make app, already listed there as its web surface"
     }
   ]
 }
