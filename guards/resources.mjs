@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Type registry guard (company-resource-registry/v2). One namespace for every named
-// entity: agents, bots, rooms, the Eve agent, repos, Vercel projects, domains.
+// entity: agents, bots, rooms, the Eve agent, repos, Vercel projects, domains, webhooks.
 //   validate                 -> registry is internally collision-free (CI, deterministic)
 //   can-create --kind K --name N [--purpose-key P] [--family F] [--supersedes REF]
 //                            -> refuse a create that would duplicate or confuse (creation flows)
@@ -14,7 +14,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const DEFAULT_REGISTRY = join(HERE, '..', 'canon', 'resources.json');
 
 export const AGENT_KINDS = new Set(['grok-bot', 'room', 'eve-agent', 'hyperagent-agent', 'external-agent', 'codex-agent', 'cloud-agent']);
-const NAMESPACED = new Set(['domain']); // exact-name namespace; never collides cross-kind
+const NAMESPACED = new Set(['domain']); // domains only; webhooks share the cross-kind name namespace
+// active_uncommissioned stays live: reserved resources still own their names and purposes.
 export const INACTIVE = new Set(['retired', 'archived', 'duplicate', 'deleted', 'missing']);
 const PLACEHOLDERS = new Set(['newbot', 'newagent', 'untitled', 'newproject', 'myproject', 'newroom', 'newchat']);
 
