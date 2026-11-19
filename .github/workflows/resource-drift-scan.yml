@@ -2,10 +2,18 @@
 # open (or update) one issue with duplicates / unregistered / orphaned resources and a
 # proposed action. Never deletes. Needs secrets VERCEL_TOKEN and DOPPLER_TOKEN; missing
 # sources are reported as skipped in the issue.
+# Event-driven: a GitHub org `repository` webhook or a Vercel `project.created` webhook is
+# relayed as repository_dispatch type resource-created, so a create outside the registry is
+# flagged within minutes. The daily cron stays as the backstop when a relay is down.
 name: Resource Drift Scan
 on:
+  repository_dispatch:
+    types: [resource-created]
   schedule: [{ cron: '17 6 * * *' }]
   workflow_dispatch:
+concurrency:
+  group: resource-drift
+  cancel-in-progress: false
 permissions:
   contents: read
   issues: write
