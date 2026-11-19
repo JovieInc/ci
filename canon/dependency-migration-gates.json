@@ -1,0 +1,19 @@
+{
+  "schema": "dependency-migration-gates/v1",
+  "gates": [
+    {
+      "package": "eve",
+      "linear": "JOV-9613",
+      "probe": {
+        "repo": "JovieInc/summer-config",
+        "source": "PR #511 (codex/jov-9613-eve-1-0-continuity-qualification)",
+        "script": "scripts/qualification/eve-legacy-import.mjs",
+        "doc": "docs/operations/EVE_1_0_CUTOVER.md"
+      },
+      "exitCodes": { "0": "safe: merge allowed", "1": "hold: cutover drops pending work", "2": "wrong SDK version" },
+      "appliesTo": ["JovieInc/summer-config:apps/summer", "JovieInc/Jovie:apps/eve-pilot", "JovieInc/LogYourBody:."],
+      "requiredExit": 0,
+      "note": "A major (or 0.x minor) of a gated package may auto-merge only when its probe exits 0. eve 1.x is expected to stay held until JOV-9613 lands."
+    }
+  ]
+}
