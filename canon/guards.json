@@ -5,7 +5,7 @@
     {"id": "size-500", "owner": "ci", "mode": "ratchet", "source": "guards/size.mjs"},
     {"id": "agents-pointer", "owner": "ci", "mode": "enforce", "source": "guards/run.mjs"},
     {"id": "pin-drift", "owner": "ci", "mode": "enforce", "source": "guards/drift.mjs"},
-    {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs"},
+    {"id": "resource-registry", "owner": "ci", "mode": "enforce", "source": "guards/resources.mjs", "note": "v2 type registry: can-create for creation flows (enforce); validate of canon/resources.json runs in Company Guards Self."},
     {"id": "tracker-registry", "owner": "summer", "mode": "ratchet", "source": "guards/plugins/tracker-registry.mjs"},
     {"id": "data-paths", "owner": "ci", "mode": "ratchet", "source": "guards/plugins/data-paths.mjs"},
     {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
