@@ -97,3 +97,8 @@ test('drift flags unregistered live resources, renames and live collisions', () 
   assert.ok(types.includes('name-drift'));
   assert.ok(types.includes('live-collision'));
 });
+
+test('the committed canon validates', () => {
+  const canon = JSON.parse(readFileSync(new URL('../canon/resources.json', import.meta.url), 'utf8'));
+  assert.deepEqual(validate(canon).fails, []);
+});
