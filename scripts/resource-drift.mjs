@@ -6,6 +6,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { keyOf } from '../guards/resources.mjs';
 
 export function classify(registry, actual) {
   const findings = [];
@@ -25,7 +26,7 @@ export function classify(registry, actual) {
     }
   }
   for (const r of registry.resources) {
-    if (r.status === 'canonical' && actual[r.kind] && !seen.has(`${r.kind}:${r.name.toLowerCase()}`)) {
+    if (['canonical', 'missing'].includes(r.status) && actual[r.kind] && !seen.has(`${r.kind}:${r.name.toLowerCase()}`)) {
       // gh repo list is credential-scoped, capped and excludes archived repos.
       // Absence from that observation cannot prove a registered repo is gone.
       const unknown = r.kind === 'github-repo';
@@ -33,6 +34,13 @@ export function classify(registry, actual) {
         ? 'repository not observed: verify access, archival status and listing coverage before changing the registry'
         : 'registry entry has no live resource: remove entry or recreate' });
     }
+  }
+  // Live near-duplicates: two observed resources of a kind whose names normalize to the same
+  // key (jovie / jovie-v1, v0-new-project-<random> x2) are flagged even if both are registered.
+  for (const [kind, names] of Object.entries(actual)) {
+    const byNorm = new Map();
+    for (const n of names) { const k = keyOf(kind, n); byNorm.set(k, [...(byNorm.get(k) || []), n]); }
+    for (const [k, ns] of byNorm) if (k && ns.length > 1) findings.push({ kind, name: ns.join(' + '), type: 'near-duplicate', proposedAction: `names normalize to "${k}"; keep one canonical, mark the rest duplicateOf (deletes need Tim's yes)` });
   }
   return findings;
 }
