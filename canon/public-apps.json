@@ -178,6 +178,16 @@
       "kind": "domain",
       "name": "shouldimakeamusicvideo.com",
       "reason": "domain of the dormant should-i-make app, already listed there as its web surface"
+    },
+    {
+      "kind": "vercel-project",
+      "name": "montpellier",
+      "reason": "internal: Jovie ops (ops.jov.ie), not a customer app; project has Vercel SSO protection"
+    },
+    {
+      "kind": "domain",
+      "name": "ops.jov.ie",
+      "reason": "internal Jovie ops surface (Vercel project montpellier), not a customer app"
     }
   ]
 }

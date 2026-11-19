@@ -20,7 +20,7 @@ export function classify(registry, actual) {
       if (!e) {
         const nonCanon = kind === 'github-repo' && registry.nonCanonicalGithubOwners.includes(name.split('/')[0]);
         findings.push({ kind, name, type: 'unregistered', proposedAction: nonCanon ? 'migrate to JovieInc if needed, else archive (needs Tim\'s yes)' : 'register with owner and purpose, or delete (needs Tim\'s yes)' });
-      } else if (['duplicate', 'unregistered', 'dormant', 'shadow'].includes(e.status)) {
+      } else if (['duplicate', 'unregistered', 'dormant', 'shadow', 'deleted'].includes(e.status)) {
         findings.push({ kind, name, type: e.status, proposedAction: e.proposedAction || 'review (needs Tim\'s yes)' });
       }
     }

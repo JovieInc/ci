@@ -49,9 +49,31 @@ test('drift: a pin past the newest canon/guard commit is current, not 30 behind'
   assert.equal(evaluate('mid', c, Date.parse('2026-10-21T00:00:00Z'), new Set(['g2'])).ok, true); // within grace
 });
 test('drift scan: flags unregistered, duplicate, orphaned', () => {
-  const f = classify(reg, { 'vercel-project': ['jovie', 'web', 'mystery'], 'github-repo': ['meetjovie/x'] });
+  // Fixture: do not bind this unit test to live resources.json rows (e.g. "web"
+  // was a duplicate, then Tim deleted it). The live registry is still used by
+  // the can-create cases above.
+  const fixture = {
+    nonCanonicalGithubOwners: ['meetjovie'],
+    resources: [
+      { kind: 'vercel-project', name: 'canon-app', status: 'canonical' },
+      { kind: 'vercel-project', name: 'web', status: 'duplicate', proposedAction: 'delete after confirming' },
+      { kind: 'vercel-project', name: 'summer', status: 'missing' },
+    ],
+  };
+  const f = classify(fixture, { 'vercel-project': ['canon-app', 'web', 'mystery'], 'github-repo': ['meetjovie/x'] });
   const types = f.map((x) => `${x.name}:${x.type}`);
   assert.ok(types.includes('web:duplicate') && types.includes('mystery:unregistered') && types.includes('summer:orphaned') && types.includes('meetjovie/x:unregistered'));
+});
+
+test('drift scan: a deleted registry row that reappears live is flagged', () => {
+  const fixture = {
+    resources: [
+      { kind: 'vercel-project', name: 'web', status: 'deleted', duplicateOf: 'vercel-project:canon-app', proposedAction: 'already deleted' },
+    ],
+  };
+  const f = classify(fixture, { 'vercel-project': ['web'] });
+  assert.equal(f[0].type, 'deleted');
+  assert.equal(f[0].name, 'web');
 });
 
 test('drift scan: unseen GitHub repositories are unknown, not orphaned', () => {
