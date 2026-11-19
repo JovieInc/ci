@@ -11,6 +11,7 @@
     {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
     {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"},
     {"id": "public-app-certification", "owner": "ci", "mode": "enforce", "source": "guards/plugins/public-app-certification.mjs", "note": "Per-app grace until enforceFrom in canon/public-apps.json; dormant apps warn."},
+    {"id": "guardrail-section", "owner": "Symphony Owner", "mode": "ratchet", "required": false, "source": "guards/plugins/guardrail-section.mjs", "note": "PR body Guardrail section (canon/COMPANY.md#guardrail-with-every-fix-ratchet). required:false: guards/run.mjs reports it as warnings until autonomous promotion (>=20 consecutive clean runs or 7 days at 0 false positives, plus 1-2 non-Grok reviews); auto-demote above 2% false positives."},
     {"id": "public-app-launch", "owner": "ci", "mode": "enforce", "source": "scripts/public-app-scan.mjs", "note": "Runs in JovieInc/ci: PRs check every public surface is classified (hermetic); the daily run checks stage public apps have a fresh passing receipt."}
   ]
 }
