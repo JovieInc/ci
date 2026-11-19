@@ -10,6 +10,7 @@ Repository: `JovieInc/ci`
 - `README.md`
 - `AGENTS.md`
 - `docs/DOCUMENTATION.md`
+- `canon/webhooks.md`
 
 ## Manifest and workflow fingerprints
 

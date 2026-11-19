@@ -13,6 +13,8 @@ Pointer line every repo AGENTS.md must contain (checked by `guards/run.mjs`):
 
     Company canon: JovieInc/ci canon/COMPANY.md (applies in full; this file is the repo delta).
 
+Webhook policy: [company webhook canon](webhooks.md) (JOV-13083).
+
 ## How a guard becomes company-wide
 
 1. Ship the guard once, as a module in `guards/plugins/` (see `guards/run.mjs`).
@@ -51,7 +53,7 @@ in `canon/data-paths.json` only; label `data-exception` waives one PR.
   then an audience-intent eval loop until it passes. Never ship the first draft.
 
 - Single source of truth: every fact has one canonical source; copies fail lint.
-  Before creating a repo, Vercel project, domain, Doppler project or worker, look
+  Before creating a repo, Vercel project, domain, Doppler project, worker or webhook, look
   it up in `canon/resources.json`; `guards/resources.mjs can-create` refuses when
   an entry with the same purpose exists. Merge into the existing one instead.
 - Tools: before adding or using a skill, plugin, MCP server, CLI, hook or worker, look it up in

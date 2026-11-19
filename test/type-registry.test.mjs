@@ -17,6 +17,8 @@ const fx = () => ({
     { kind: 'vercel-project', id: 'p1', name: 'jovie', family: 'jovie', purposeKey: 'jovie-web-app', status: 'canonical', owner: 'person:tim' },
     { kind: 'vercel-project', id: 'p2', name: 'jovie-v1', family: 'jovie', purposeKey: 'jovie-web-app', status: 'duplicate', duplicateOf: 'vercel-project:p1', owner: 'person:tim' },
     { kind: 'domain', name: 'jov.ie', status: 'canonical', owner: 'person:tim' },
+    { kind: 'webhook', name: 'registry-create-github-org', purposeKey: 'registry-create-github', provider: 'github', scope: 'org:JovieInc', events: ['repository'], target: 'https://jov.ie/api/webhooks/registry-create', secretEnv: 'REGISTRY_GITHUB_WEBHOOK_SECRET', owner: 'person:tim', linear: 'JOV-13083', family: 'ci', status: 'active_uncommissioned' },
+    { kind: 'webhook', name: 'registry-create-vercel-team', purposeKey: 'registry-create-vercel', provider: 'vercel', scope: 'team:jovie', events: ['project.created'], target: 'https://jov.ie/api/webhooks/registry-create', secretEnv: 'REGISTRY_VERCEL_WEBHOOK_SECRET', owner: 'person:tim', linear: 'JOV-13083', family: 'ci', status: 'active_uncommissioned' },
   ],
 });
 
@@ -31,6 +33,43 @@ test('normalized keys collapse case, punctuation, copies, versions and dodge suf
 
 test('a clean fixture validates; known duplicates pointing at canon are allowed', () => {
   assert.deepEqual(validate(fx()).fails, []);
+});
+
+test('webhook entries validate and use normal, non-namespaced keys', () => {
+  const r = fx();
+  assert.equal(r.resources.filter((e) => e.kind === 'webhook').length, 2);
+  assert.deepEqual(validate(r).fails, []);
+  assert.equal(keyOf('webhook', 'Registry_Create-Github-Org-2'), 'registrycreategithuborg');
+  assert.equal(canCreate(r, { kind: 'webhook', name: 'linear-issue-events', purposeKey: 'linear-issue-events' }).ok, true);
+});
+
+test('can-create refuses existing and normalized twin webhooks before commissioning', () => {
+  for (const name of ['registry-create-github-org', 'Registry_Create-Github-Org-2']) {
+    const result = canCreate(fx(), { kind: 'webhook', name, family: 'ci' });
+    assert.equal(result.ok, false, name);
+    assert.match(result.reason, /webhook "registry-create-github-org" \(active_uncommissioned\) already owns "registrycreategithuborg"/);
+  }
+});
+
+test('two live webhooks cannot serve the same purposeKey', () => {
+  const r = fx();
+  const webhook = r.resources.find((e) => e.kind === 'webhook');
+  const duplicate = { ...webhook, name: 'github-inventory-events' };
+  const result = canCreate(r, duplicate);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /purpose "registry-create-github" already served by webhook/);
+  r.resources.push(duplicate);
+  assert.match(validate(r).fails.join('\n'), /purpose "registry-create-github" served twice: webhook:registry-create-github-org and webhook:github-inventory-events/);
+});
+
+test('webhook names cannot collide with a repository in a different family', () => {
+  const r = fx();
+  const webhook = { ...r.resources.find((e) => e.kind === 'webhook'), name: 'JOVIE' };
+  const result = canCreate(r, webhook);
+  assert.equal(result.ok, false);
+  assert.match(result.reason, /github-repo "JovieInc\/Jovie"/);
+  r.resources.push(webhook);
+  assert.match(validate(r).fails.join('\n'), /name collision "jovie": github-repo:JovieInc\/Jovie .* vs webhook:JOVIE/);
 });
 
 test('two live entries with the same normalized name fail, across kinds too', () => {
