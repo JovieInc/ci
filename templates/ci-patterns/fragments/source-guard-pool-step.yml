@@ -1,0 +1,32 @@
+# Fragment: pool disk-read source guards (Jovie #26115).
+# Same guards, run-all, first failure wins. SOURCE_GUARD_CONCURRENCY=1 = serial.
+# Consumer supplies selectSourceGuards / listAllChangedFiles (repo-owned).
+#
+#   uses: inline node against pinned JovieInc/ci lib/source-guard-pool.mjs
+#
+# - name: Validate disk-read source contracts
+#   env:
+#     SOURCE_GUARD_CONCURRENCY: ${{ env.SOURCE_GUARD_CONCURRENCY || 3 }}
+#     CI_PATTERNS_ROOT: ${{ github.workspace }}/.ci-patterns  # or checkout path
+#   run: |
+#     node --input-type=module <<'EOF'
+#     import { pathToFileURL } from 'node:url';
+#     import { join } from 'node:path';
+#     const root = process.env.CI_PATTERNS_ROOT;
+#     const { runSourceGuards } = await import(
+#       pathToFileURL(join(root, 'lib/source-guard-pool.mjs')).href
+#     );
+#     // Repo-owned selector:
+#     const { selectSourceGuards, listAllChangedFiles } = await import(
+#       pathToFileURL(join(process.cwd(), 'scripts/ci-guards.mjs')).href
+#     );
+#     const guards = selectSourceGuards(
+#       process.env.GITHUB_EVENT_NAME,
+#       listAllChangedFiles(process.cwd())
+#     );
+#     const { code } = await runSourceGuards(guards, {
+#       longPoles: ['merged-with-base-invariants', 'script-contracts'],
+#       // provide execute that shells guard.command with cwd=process.cwd()
+#     });
+#     process.exitCode = code;
+#     EOF

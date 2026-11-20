@@ -39,6 +39,15 @@ baseline+live Mut heatmap feed, and coverage surface-token matching. See
 commit SHA; do not weaken required gates. Separate from the CI speed-patterns
 promotion (#55). Inheritance surface is this repository — not `summer-config`.
 
+## Portable CI speed patterns
+
+Libraries and YAML fragments promoted from JovieInc/Jovie (#26115 source-guard
+pool, #26116 fail-closed fan-in + matrix shards, #26117 docs-only structural
+skip). See [ci patterns](docs/ci-patterns.md) and
+[templates/ci-patterns](templates/ci-patterns/README.md). Pin a full commit SHA;
+do not weaken required gates. Inheritance surface is this repository — not
+`summer-config`.
+
 ## Typed shard evidence
 
 `actions/ci-shard-contract/` validates provider-neutral shard receipts, exact
