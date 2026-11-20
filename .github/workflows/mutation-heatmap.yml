@@ -1,0 +1,41 @@
+name: Mutation Heatmap
+
+on:
+  pull_request:
+    paths:
+      - 'lib/mutation-score-math.mjs'
+      - 'lib/mutation-heatmap-scores.mjs'
+      - 'lib/coverage-surface-tokens.mjs'
+      - 'test/mutation-score-math.test.mjs'
+      - 'test/mutation-heatmap-scores.test.mjs'
+      - 'test/coverage-surface-tokens.test.mjs'
+      - 'templates/mutation-heatmap/**'
+      - 'docs/mutation-heatmap.md'
+      - '.github/workflows/mutation-heatmap.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/mutation-score-math.mjs'
+      - 'lib/mutation-heatmap-scores.mjs'
+      - 'lib/coverage-surface-tokens.mjs'
+      - 'test/mutation-score-math.test.mjs'
+      - 'test/mutation-heatmap-scores.test.mjs'
+      - 'test/coverage-surface-tokens.test.mjs'
+      - 'templates/mutation-heatmap/**'
+      - 'docs/mutation-heatmap.md'
+      - '.github/workflows/mutation-heatmap.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: >
+          node --test
+          test/mutation-score-math.test.mjs
+          test/mutation-heatmap-scores.test.mjs
+          test/coverage-surface-tokens.test.mjs

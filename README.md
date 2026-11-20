@@ -30,6 +30,14 @@ Previously described `rw-gate-fast`, `rw-gate-risk`, `rw-gate-deep` and
 `rw-merge-queue` workflows are not present on this revision. JOV-2970/JOV-2975
 track shared CI; existing PRs retain ownership of their separate implementation.
 
+## Portable mutation heatmap + surface tokens
+
+Libraries promoted from JovieInc/Jovie #26159: canonical `scoreMutants`,
+baseline+live Mut heatmap feed, and coverage surface-token matching. See
+[mutation heatmap](docs/mutation-heatmap.md) and
+[templates/mutation-heatmap](templates/mutation-heatmap/README.md). Pin a full
+commit SHA; do not weaken required gates. Separate from the CI speed-patterns
+promotion (#55). Inheritance surface is this repository — not `summer-config`.
 
 ## Typed shard evidence
 

@@ -1,0 +1,10 @@
+# Path filter for mutation-heatmap contract jobs (copy into consumer workflows).
+paths:
+  - 'lib/mutation-score-math.mjs'
+  - 'lib/mutation-heatmap-scores.mjs'
+  - 'lib/coverage-surface-tokens.mjs'
+  - 'test/mutation-score-math.test.mjs'
+  - 'test/mutation-heatmap-scores.test.mjs'
+  - 'test/coverage-surface-tokens.test.mjs'
+  - 'docs/mutation-heatmap.md'
+  - 'templates/mutation-heatmap/**'
