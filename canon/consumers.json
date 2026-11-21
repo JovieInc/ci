@@ -1,5 +1,21 @@
 {
   "schema": "company-consumers/v1",
-  "repos": ["Jovie", "summer-config", "LogYourBody", "Ops", "symphony-control", "symphony"],
-  "pinFile": ".github/workflows/company-guards.yml"
+  "repos": [
+    "Jovie",
+    "summer-config",
+    "LogYourBody",
+    "Ops",
+    "symphony-control",
+    "symphony"
+  ],
+  "pinFile": ".github/workflows/company-guards.yml",
+  "admission": {
+    "_note": "JOV-13093: queue-admission labels and merge method for automated ci-pin bumps (same mapping as the dependabot-auto-merge certification_labels input). Default: label compounding only, squash.",
+    "LogYourBody": {
+      "labels": [
+        "machine-certified"
+      ],
+      "mergeMethod": "merge"
+    }
+  }
 }
