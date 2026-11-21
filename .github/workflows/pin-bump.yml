@@ -1,7 +1,10 @@
-# When canon/ or guards/ change on main, open a pin-bump PR in every consumer, close the older
-# open bumps it supersedes, and enable auto-merge so the pin lands on green with no human.
-# Uses the jovie-bot GitHub App (short-lived token). Needs repo variable JOVIE_BOT_APP_ID and
-# secret JOVIE_BOT_PRIVATE_KEY; without them the job is a no-op.
+# When canon/ or guards/ change on main, canary the new pin against each
+# consumer's main (read-only dry run), then open a pin-bump PR in every
+# consumer, close the older open bumps it supersedes, and enable auto-merge so
+# the pin lands on green with no human. A red or skipped canary fails closed:
+# no consumer PR is opened. Uses the existing jovie-bot GitHub App (short-lived
+# token). Needs repo variable JOVIE_BOT_APP_ID and secret JOVIE_BOT_PRIVATE_KEY;
+# without them both jobs no-op (no consumer writes).
 name: Pin Bump
 on:
   push:
@@ -11,7 +14,43 @@ on:
 permissions:
   contents: read
 jobs:
+  canary:
+    name: Consumer canary
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    outputs:
+      verdict: ${{ steps.canary.outputs.verdict }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false }
+      - name: Mint short-lived read-only jovie-bot token
+        id: app
+        if: ${{ vars.JOVIE_BOT_APP_ID != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.JOVIE_BOT_APP_ID }}
+          private-key: ${{ secrets.JOVIE_BOT_PRIVATE_KEY }}
+          owner: JovieInc
+          permission-contents: read
+      - name: Run consumer canary
+        id: canary
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          SHA: ${{ github.sha }}
+        run: |
+          if [ -z "$GH_TOKEN" ]; then
+            echo "jovie-bot app not configured (JOVIE_BOT_APP_ID / JOVIE_BOT_PRIVATE_KEY); no consumer PRs will be opened"
+            echo "verdict=no-bump" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          node scripts/pin-bump-canary.mjs --sha "$SHA"
+          echo "verdict=green" >> "$GITHUB_OUTPUT"
+
   bump:
+    name: Open bump PRs
+    needs: canary
+    # Fail closed: a skipped or red canary must not open consumer PRs.
+    if: ${{ !cancelled() && needs.canary.result == 'success' }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:
@@ -19,9 +58,18 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with: { persist-credentials: false }
+      - name: Require a canary verdict before any consumer write
+        env:
+          CANARY_VERDICT: ${{ needs.canary.outputs.verdict }}
+        run: |
+          case "$CANARY_VERDICT" in
+            green) echo "consumer canary green; proceeding" ;;
+            no-bump) echo "canary verdict is no-bump (app not configured); no consumer PRs will be opened" ;;
+            *) echo "::error::pin-bump canary verdict is '${CANARY_VERDICT:-missing}' (required: green or no-bump); refusing to open consumer PRs"; exit 1 ;;
+          esac
       - name: Mint short-lived jovie-bot token
         id: app
-        if: ${{ vars.JOVIE_BOT_APP_ID != '' }}
+        if: ${{ vars.JOVIE_BOT_APP_ID != '' && needs.canary.outputs.verdict == 'green' }}
         uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ vars.JOVIE_BOT_APP_ID }}
@@ -30,8 +78,11 @@ jobs:
       - name: Open a bump PR per consumer
         env:
           GH_TOKEN: ${{ steps.app.outputs.token }}
+          CANARY_VERDICT: ${{ needs.canary.outputs.verdict }}
         run: |
           [ -n "$GH_TOKEN" ] || { echo "jovie-bot app not configured (JOVIE_BOT_APP_ID / JOVIE_BOT_PRIVATE_KEY); skipping"; exit 0; }
+          # Fail closed: a write token without a green canary must not open PRs.
+          [ "$CANARY_VERDICT" = "green" ] || { echo "::error::refusing to open consumer PRs without a green canary (verdict=${CANARY_VERDICT:-missing})"; exit 1; }
           gh auth setup-git
           for repo in $(node -e 'console.log(require("./canon/consumers.json").repos.join(" "))'); do
             gh repo clone "JovieInc/$repo" "w-$repo" -- --depth 1 -q || continue
