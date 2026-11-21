@@ -14,6 +14,15 @@ on:
         required: false
         type: string
         default: 'merge-queue,tim-approved'
+      auto_merge_method:
+        description: >-
+          JOV-13093: when set (squash, merge or rebase), arm native auto-merge on
+          patch/minor bumps with this method so they land on green with no
+          human. Empty (default) keeps today's behaviour for consumers whose own
+          enrollment controller admits the PR (LogYourBody).
+        required: false
+        type: string
+        default: ''
 
 permissions: {}
 
@@ -31,16 +40,46 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Check out dependency declaration tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: JovieInc/ci
+          ref: main
+          path: .company-ci
+          persist-credentials: false
+          sparse-checkout: |
+            scripts/dependabot-declare.mjs
+            canon/dependency-migration-gates.json
+          sparse-checkout-cone-mode: false
+
+      - name: Declare dependency upgrades in the PR body
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          UPDATED_DEPENDENCIES: ${{ steps.meta.outputs.updated-dependencies-json }}
+        run: |
+          set -euo pipefail
+          printf '%s' "$UPDATED_DEPENDENCIES" > "$RUNNER_TEMP/dependabot-updated.json"
+          gh pr view "$PR_URL" --json body --jq .body > "$RUNNER_TEMP/dependabot-body.txt"
+          node .company-ci/scripts/dependabot-declare.mjs \
+            --updated "$RUNNER_TEMP/dependabot-updated.json" \
+            --body "$RUNNER_TEMP/dependabot-body.txt" \
+            --gates .company-ci/canon/dependency-migration-gates.json \
+            --out "$RUNNER_TEMP/dependabot-body-out.txt" > "$RUNNER_TEMP/dependabot-summary.json"
+          gh pr edit "$PR_URL" --body-file "$RUNNER_TEMP/dependabot-body-out.txt"
+
       - name: Certify patch + minor for queue admission
         if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CERTIFICATION_LABELS: ${{ inputs.certification_labels }}
+          DEPENDENCY_NAMES: ${{ steps.meta.outputs.dependency-names }}
+          UPDATE_TYPE: ${{ steps.meta.outputs.update-type }}
         run: |
           set -euo pipefail
-          echo "Dependency: ${{ steps.meta.outputs.dependency-names }}"
-          echo "Update type: ${{ steps.meta.outputs.update-type }}"
+          echo "Dependency: $DEPENDENCY_NAMES"
+          echo "Update type: $UPDATE_TYPE"
           IFS=',' read -ra labels <<<"$CERTIFICATION_LABELS"
           for label in "${labels[@]}"; do
             label="$(echo "$label" | xargs)"
@@ -48,10 +87,38 @@ jobs:
             gh pr edit --add-label "$label" "$PR_URL" || true
           done
 
-      - name: Note major bump requires manual review
+      - name: Arm auto-merge for patch + minor
+        if: (steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor') && inputs.auto_merge_method != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          METHOD: ${{ inputs.auto_merge_method }}
+        run: |
+          set -euo pipefail
+          case "$METHOD" in squash|merge|rebase) ;; *) echo "::error::auto_merge_method must be squash, merge or rebase (got '$METHOD')"; exit 1 ;; esac
+          gh pr merge --auto "--$METHOD" "$PR_URL" || echo "::warning::auto-merge unavailable for $PR_URL (enable allow_auto_merge in repo settings)"
+
+      - name: Hold major upgrades as drafts for qualification
         if: steps.meta.outputs.update-type == 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
         run: |
-          echo "Major bump for ${{ steps.meta.outputs.dependency-names }} — manual review required"
+          set -euo pipefail
+          gh pr ready --undo "$PR_URL"
+          gh pr edit --add-label dependency-major "$PR_URL" || echo '::warning::Could not add dependency-major label'
+          migration_gated="$(node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from 'node:fs';
+          import { join } from 'node:path';
+          const summary = JSON.parse(readFileSync(join(process.env.RUNNER_TEMP, 'dependabot-summary.json'), 'utf8'));
+          const gated = new Set(summary.gated);
+          const lines = summary.updates.map(({ dependencyName, prevVersion, newVersion }) =>
+            `- ${dependencyName}: ${prevVersion} → ${newVersion} (${gated.has(dependencyName) ? 'gated' : 'not gated'})`);
+          lines.push('', 'promotion to ready happens when the full suite + migration probe are green and the JOV-13053 90% bar passes (LATER: JOV-13093 promotion job)');
+          appendFileSync(process.env.GITHUB_STEP_SUMMARY, `${lines.join('\n')}\n`);
+          process.stdout.write(String(gated.size > 0));
+          NODE
+          )"
+          if [ "$migration_gated" = true ]; then
+            gh pr edit --add-label migration-gated "$PR_URL" || echo '::warning::Could not add migration-gated label'
+          fi
