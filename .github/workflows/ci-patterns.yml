@@ -1,0 +1,48 @@
+name: CI Patterns
+
+on:
+  pull_request:
+    paths:
+      - 'lib/command-pool.mjs'
+      - 'lib/source-guard-pool.mjs'
+      - 'lib/fail-closed-fanin.mjs'
+      - 'lib/docs-only.mjs'
+      - 'lib/asserted-doc-paths.mjs'
+      - 'test/command-pool.test.mjs'
+      - 'test/source-guard-pool.test.mjs'
+      - 'test/fail-closed-fanin.test.mjs'
+      - 'test/docs-only.test.mjs'
+      - 'templates/ci-patterns/**'
+      - 'docs/ci-patterns.md'
+      - '.github/workflows/ci-patterns.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'lib/command-pool.mjs'
+      - 'lib/source-guard-pool.mjs'
+      - 'lib/fail-closed-fanin.mjs'
+      - 'lib/docs-only.mjs'
+      - 'lib/asserted-doc-paths.mjs'
+      - 'test/command-pool.test.mjs'
+      - 'test/source-guard-pool.test.mjs'
+      - 'test/fail-closed-fanin.test.mjs'
+      - 'test/docs-only.test.mjs'
+      - 'templates/ci-patterns/**'
+      - 'docs/ci-patterns.md'
+      - '.github/workflows/ci-patterns.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - run: >
+          node --test
+          test/command-pool.test.mjs
+          test/source-guard-pool.test.mjs
+          test/fail-closed-fanin.test.mjs
+          test/docs-only.test.mjs

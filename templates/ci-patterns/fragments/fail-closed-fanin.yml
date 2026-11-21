@@ -1,0 +1,41 @@
+# Fragment: same-name fail-closed fan-in + matrix shards (Jovie #26116 / JOV-13072).
+# Keep the REQUIRED check name on the fan-in job. Workers are not required by name.
+# fail-fast: false. Gate fails on failure|cancelled|skipped|missing. No continue-on-error.
+#
+# jobs:
+#   critical-path:
+#     name: Critical Path          # <-- required check name stays here
+#     runs-on: ubuntu-24.04
+#     needs: [path-changes, critical-path-shards]
+#     if: always() && needs.path-changes.result == 'success'
+#     steps:
+#       - name: Require shard success
+#         env:
+#           SHARDS_RESULT: ${{ needs.critical-path-shards.result }}
+#         run: |
+#           set -euo pipefail
+#           if [[ "$SHARDS_RESULT" != 'success' ]]; then
+#             echo "::error::ci shards failed closed: $SHARDS_RESULT"
+#             exit 1
+#           fi
+#       # optional: download/combine shard evidence; missing evidence must fail
+#
+#   critical-path-shards:
+#     name: Critical Path shard ${{ matrix.shard }}/${{ strategy.job-total }}
+#     runs-on: ubuntu-24.04
+#     needs: [path-changes]
+#     if: ${{ !cancelled() && needs.path-changes.result == 'success' }}
+#     strategy:
+#       fail-fast: false
+#       matrix:
+#         shard: [1, 2, 3]
+#     steps:
+#       - uses: actions/checkout@v4
+#       - name: Run shard work
+#         run: ./scripts/run-shard.sh "${{ matrix.shard }}"
+#
+# Contract tests (consumer-owned) should pin:
+# - fan-in name === previous required name
+# - gate exits 0 only when SHARDS_RESULT=success
+# - strategy.fail-fast === false
+# - evidence downloads without continue-on-error
