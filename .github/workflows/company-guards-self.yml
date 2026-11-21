@@ -17,8 +17,40 @@ jobs:
         with:
           node-version: 24
       - run: node scripts/tooling-drift.mjs check
-      - run: node --experimental-test-coverage --test-coverage-include='certify/**' --test-coverage-lines=95 --test-coverage-branches=80 --test test/ci-shard-contract.test.mjs test/company-guards.test.mjs test/tracker-registry.test.mjs test/public-app-certification.test.mjs test/certify/commands.test.mjs test/certify/inventory.test.mjs test/certify/outcome-verifier.test.mjs test/certify/privacy.test.mjs test/certify/receipt.test.mjs test/certify/voice.test.mjs test/certify/walk.test.mjs test/certify/judge.test.mjs test/certify/buyer.test.mjs test/certify/gate.test.mjs test/size-scope.test.mjs test/size-file-list.test.mjs
+      - run: node --experimental-test-coverage --test-coverage-include='certify/**' --test-coverage-lines=95 --test-coverage-branches=80 --test test/ci-shard-contract.test.mjs test/company-guards.test.mjs test/tracker-registry.test.mjs test/public-app-certification.test.mjs test/certify/commands.test.mjs test/certify/inventory.test.mjs test/certify/outcome-verifier.test.mjs test/certify/privacy.test.mjs test/certify/receipt.test.mjs test/certify/voice.test.mjs test/certify/walk.test.mjs test/certify/judge.test.mjs test/certify/buyer.test.mjs test/certify/gate.test.mjs test/size-scope.test.mjs test/size-file-list.test.mjs test/lockfile-majors.test.mjs test/consumer-selftest.test.mjs
       - name: Dogfood the suite and pointer check
         env:
           PR_BODY: ${{ github.event.pull_request.body }}
         run: node guards/run.mjs
+  # JOV-13093: a guard/canon change must not turn any consumer red on its pin bump.
+  # Runs the candidate guard suite against each consumer's main (read-only clone)
+  # next to the consumer's pinned ci SHA and fails on NEW enforcing failures only.
+  consumer-selftest:
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with: { persist-credentials: false, fetch-depth: 0 } # pinned SHAs are checked out from this history
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+      - name: Mint short-lived read token (jovie-bot)
+        id: app
+        if: ${{ vars.JOVIE_BOT_APP_ID != '' }}
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.JOVIE_BOT_APP_ID }}
+          private-key: ${{ secrets.JOVIE_BOT_PRIVATE_KEY }}
+          owner: JovieInc
+          permission-contents: read
+      - name: Consumer self-test (pinned vs candidate)
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: |
+          if [ -n "$GH_TOKEN" ]; then
+            node scripts/consumer-selftest.mjs
+          else
+            echo "::warning::jovie-bot app not configured; private consumers are reported unverified, not failed"
+            node scripts/consumer-selftest.mjs --allow-unreachable
+          fi
