@@ -46,15 +46,17 @@ const sizeWarnings = sizeResult.warnings.map((f) => `size-500 (pre-existing, not
 // 4. Plugins (JOV-9975 and later).
 // A plugin registered with mode "shadow" in canon/guards.json reports as
 // warnings while it qualifies (no consumer goes red on a pin bump); flip the
-// registry entry to "ratchet" to enforce.
+// registry entry to "ratchet" to enforce. An entry with "required": false also
+// only warns, whatever its mode, until it is promoted by removing that flag.
 const pdir = join(HERE, 'plugins');
 const registry = JSON.parse(readFileSync(join(HERE, '..', 'canon', 'guards.json'), 'utf8'));
-const modeOf = (id) => registry.guards.find((g) => g.id === id)?.mode ?? 'ratchet';
+const entryOf = (id) => registry.guards.find((g) => g.id === id);
+const warnsOnly = (id) => entryOf(id)?.mode === 'shadow' || entryOf(id)?.required === false;
 const warnings = [...sizeWarnings];
 for (const f of readdirSync(pdir).filter((x) => x.endsWith('.mjs'))) {
   const m = await import(pathToFileURL(join(pdir, f)).href);
   const r = await m.run({ cwd: '.', baselineDir: '.company-guards' });
-  const sink = modeOf(m.name) === 'shadow' ? warnings : fails;
+  const sink = warnsOnly(m.name) ? warnings : fails;
   sink.push(...(r.fails || []).map((x) => `${m.name}: ${x}`));
   warnings.push(...(r.warnings || []).map((x) => `${m.name}: ${x}`));
 }

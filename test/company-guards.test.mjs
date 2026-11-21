@@ -280,3 +280,69 @@ test('schedule-registration: registry source must name the exact file with a val
   assert.equal(srEvaluate({ sites, registry: [{ ...entry, status: 'retired' }] }).length, 1);
   assert.equal(srEvaluate({ sites, registry: [{ ...entry, clock: {} }] }).length, 1);
 });
+
+import { evaluate as grEvaluate, parseGuardrail, run as grRun, name as grName } from '../guards/plugins/guardrail-section.mjs';
+
+const grFixture = (f) => readFileSync(new URL(`./fixtures/guardrail-section/${f}`, import.meta.url), 'utf8');
+const grReal = (ref) => ['size-500', 'guards/size.mjs', 'guards/plugins/guardrail-section.mjs'].includes(ref);
+const GR_FULL = [
+  '## Guardrail', '',
+  '- Class: PR lands without a guardrail',
+  '- Mechanism: `guards/plugins/guardrail-section.mjs`',
+  '- Enforced at: CI (Company guards)',
+  '- Status: LATER JOV-13055',
+  '- Simulation: trivial typo PR passes via Existing; high-volume burst of 40 PRs/hr parses in ms;',
+  '  literal/gaming agent writing N/A fails. Worst case: a false positive, non-required so only a warning.',
+].join('\n');
+
+test('guardrail-section: negative control, N/A everywhere fails every field', () => {
+  const fails = grEvaluate(grFixture('na-everywhere.md'), () => true);
+  assert.ok(fails.length >= 5, fails.join('\n'));
+  assert.equal(grEvaluate('## Summary\n\nno guardrail', grReal).length, 1, 'missing section fails');
+});
+test('guardrail-section: typo PR citing an Existing guard passes', () => {
+  assert.deepEqual(grEvaluate(grFixture('typo-existing.md'), grReal), []);
+});
+test('guardrail-section: full section passes; fake path, bare LATER and boilerplate simulation fail', () => {
+  assert.deepEqual(grEvaluate(GR_FULL, grReal), []);
+  assert.equal(grEvaluate(GR_FULL.replace('guards/plugins/guardrail-section.mjs', 'guards/plugins/made-up.mjs'), grReal).length, 1);
+  assert.equal(grEvaluate(GR_FULL.replace('LATER JOV-13055', 'LATER'), grReal).length, 1);
+  assert.equal(grEvaluate(GR_FULL.replace(/- Simulation:[\s\S]*$/, '- Simulation: looks fine'), grReal).length, 1);
+  assert.equal(grEvaluate(GR_FULL.replace('- Mechanism: `guards/plugins/guardrail-section.mjs`', '- Existing: `size-500`') + '\n', grReal).length, 0);
+  // "covered by" is only for PRs that cite Existing, never for a new Mechanism.
+  assert.equal(grEvaluate(GR_FULL.replace(/- Simulation:[\s\S]*$/, '- Simulation: covered by `size-500`'), grReal).length, 1);
+});
+test('guardrail-section: template comments are placeholders; a ## Simulation section counts', () => {
+  const tpl = '## Guardrail\n\n- Class:\n- Mechanism: <!-- or Existing: <check id or path> -->\n- Enforced at:\n- Status: NOW <!-- or LATER <issue link> -->\n- Simulation: <!-- trivial / high-volume -->\n';
+  assert.ok(grEvaluate(tpl, () => true).length >= 4);
+  const split = GR_FULL.replace(/- Simulation:[\s\S]*$/, '') + '\n## Simulation\n\nTrivial: x. High-volume: y. Gaming agent: z. Worst case: w.\n';
+  assert.deepEqual(grEvaluate(split, grReal), []);
+  assert.deepEqual(grEvaluate(split.replace('## Simulation', '- Simulation: see below\n\n## Simulation'), grReal), [], 'field pointing at the section');
+  assert.equal(parseGuardrail('## Summary\n'), null);
+});
+test('guardrail-section: review findings need Encoded in', () => {
+  assert.equal(grEvaluate(`Resolves 2 review findings.\n\n${GR_FULL}`, grReal).length, 1);
+  assert.deepEqual(grEvaluate(`Checks Encoded in when the PR resolves review findings.\n\n${GR_FULL}`, grReal), [], 'prose mention is not a claim');
+  assert.deepEqual(grEvaluate(`Resolves 2 review findings.\n\n${GR_FULL}\n- Encoded in: lint rule \`guards/size.mjs\``, grReal), []);
+});
+test('guardrail-section: run skips outside a PR, rejects `.` as a path, and is registered non-required', async () => {
+  const root = new URL('..', import.meta.url).pathname;
+  assert.deepEqual((await grRun({ cwd: root, body: '' })).fails, []);
+  const dot = GR_FULL.replace('`guards/plugins/guardrail-section.mjs`', '`.` and `./`');
+  assert.equal((await grRun({ cwd: root, body: dot })).fails.length, 1);
+  assert.deepEqual((await grRun({ cwd: root, body: GR_FULL })).fails, []);
+  const entry = guardsReg.guards.find((g) => g.id === grName);
+  assert.equal(entry?.required, false);
+  assert.equal(entry?.source, 'guards/plugins/guardrail-section.mjs');
+});
+test('run.mjs: a required:false plugin warns but never fails the suite', (t) => {
+  const cwd = mkdtempSync(join(tmpdir(), 'guardrail-run-'));
+  t.after(() => rmSync(cwd, { recursive: true, force: true }));
+  execFileSync('git', ['init', '-q'], { cwd });
+  writeFileSync(join(cwd, 'AGENTS.md'), 'Company canon: JovieInc/ci canon/COMPANY.md\n');
+  const result = spawnSync(process.execPath, [fileURLToPath(new URL('../guards/run.mjs', import.meta.url))], {
+    cwd, encoding: 'utf8', env: { ...process.env, PR_BODY: grFixture('na-everywhere.md'), GITHUB_EVENT_NAME: '', GITHUB_REPOSITORY: 'JovieInc/guardrail-run-test' },
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /::warning::guardrail-section: Class is empty/);
+});
