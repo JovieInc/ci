@@ -48,8 +48,13 @@ jobs:
             git -C "w-$repo" checkout -q -b "compounding/ci-pin-${SHA:0:8}"
             git -C "w-$repo" -c user.name=company-bot -c user.email=bot@jov.ie commit -qm "chore(ci): bump company guards pin to ${SHA:0:8}"
             git -C "w-$repo" push -q origin HEAD
-            pr="$(gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label compounding \
-              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "Automated pin bump from JovieInc/ci@$SHA. Scaffolds any missing public-app certification stubs (canon/PUBLIC-APP-CERTIFICATION.md).")"
+            # Queue admission (JOV-13093): the consumer's certification labels and merge method come from
+            # canon/consumers.json "admission" (same mapping as dependabot-auto-merge certification_labels),
+            # so an armed auto-merge actually enters the consumer's queue instead of sitting until drift.
+            labels="$(node -e 'const a=(require("./canon/consumers.json").admission||{})[process.argv[1]]||{};console.log(["compounding",...(a.labels||[])].join(","))' "$repo")"
+            method="$(node -e 'const a=(require("./canon/consumers.json").admission||{})[process.argv[1]]||{};console.log(a.mergeMethod||"squash")' "$repo")"
+            pr="$(gh pr create -R "JovieInc/$repo" --head "compounding/ci-pin-${SHA:0:8}" --label "$labels" \
+              --title "chore(ci): bump company guards pin to ${SHA:0:8}" --body "$(printf 'Automated pin bump from JovieInc/ci@%s. Scaffolds any missing public-app certification stubs (canon/PUBLIC-APP-CERTIFICATION.md).\n\nRefs JOV-13093\n' "$SHA")")"
             # The newest pin supersedes every older open bump: an older one can only fail the
             # 72h drift guard once this commit exists, so it would sit red until a human closed it.
             gh pr list -R "JovieInc/$repo" --state open --search "head:compounding/ci-pin-" --json number,headRefName \
@@ -58,5 +63,5 @@ jobs:
                 gh pr close "$old" -R "JovieInc/$repo" --delete-branch --comment "Superseded by $pr (newer canon pin ${SHA:0:8})." || true
               done
             # Land on green without a human: the pin bump is a machine change (ratchets only shrink).
-            gh pr merge "$pr" -R "JovieInc/$repo" --auto --squash || echo "$repo: auto-merge unavailable (enable it in repo settings)"
+            gh pr merge "$pr" -R "JovieInc/$repo" --auto "--$method" || echo "::warning::$repo: auto-merge unavailable for $pr (enable allow_auto_merge in repo settings); the bump will sit until drift.mjs turns the consumer red"
           done
