@@ -7,6 +7,10 @@ on:
     paths: ['scripts/repository_docs.py', 'tests/test_repository_docs.py', '.github/workflows/documentation-tool.yml']
 permissions:
   contents: read
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-24.04
