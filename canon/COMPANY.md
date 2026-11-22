@@ -73,6 +73,31 @@ in `canon/data-paths.json` only; label `data-exception` waives one PR.
   layer, a durable guard, and before/after numbers in the wins store. A standing
   share of fleet capacity ships waste fixes every day.
 
+## Guardrail with every fix (ratchet)
+
+Every fix, PR or change ships a guardrail for the class of failure it addresses
+(type/schema → deterministic check → CI gate → runtime monitor + auto-remediation
+→ doc last), scenario-simulated before adoption ("what if we actually followed
+this?": trivial, high-volume, literal/gaming agent; desired result and worst case
+both acceptable). Review findings are system defects: encode each at the layer
+that should have caught it and log it in the repo's review-findings ledger; a
+finding becomes a rule after 2 recurrences or a hard-constraint break.
+Deterministic only; never an AI-taste or AI-review merge gate.
+
+PRs land autonomously: green required checks, a valid `Guardrail:` section and
+the lane's autonomous review. Promote draft → ready (auto-merge armed) only at
+≥90% estimated clean-landing chance; humans never approve PRs. Reserved actions
+(spend, secrets, destructive ops, running prod migrations, outbound messages,
+public posts) still wait for Tim after their code merges.
+
+The `guardrail-section` plugin (`guards/plugins/guardrail-section.mjs`) checks
+the PR body: Class, Mechanism or Existing (must name a real path/check id),
+Enforced at, Status (NOW, or LATER with an issue link), Simulation (three
+scenarios plus a worst case), and Encoded in when the PR resolves review findings.
+It starts non-required and becomes required autonomously after ≥20 consecutive
+runs or 7 days with zero false positives, then auto-demotes above 2% false
+positives.
+
 ## Compounding reliability and performance
 
 Every part of the company should become more reliable and performant over time.
