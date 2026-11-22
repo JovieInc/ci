@@ -11,6 +11,7 @@
     {"id": "vacuous-verdict", "owner": "ci", "mode": "shadow", "source": "guards/plugins/vacuous-verdict.mjs"},
     {"id": "schedule-registration", "owner": "ci", "mode": "shadow", "source": "guards/plugins/schedule-registration.mjs"},
     {"id": "lockfile-majors", "owner": "ci", "mode": "shadow", "source": "guards/plugins/lockfile-majors.mjs", "note": "JOV-13093: undeclared dependency majors / new packages / new loose specifiers / young releases. Shadow until the Dependabot autoland auto-declare (JOV-13093 unit 2) lands and the consumer self-test is wired; then flip to enforce."},
+    {"id": "auto-update", "owner": "ci", "mode": "shadow", "source": "guards/plugins/auto-update.mjs", "note": "Company auto-update policy (canon/update-policy.json): update config per ecosystem, cooldowns, SHA-pinned actions, auto-merge lane, dated holds, Node Active LTS, wrangler compatibility_date. Shadow until consumers are clean, then ratchet."},
     {"id": "public-app-certification", "owner": "ci", "mode": "enforce", "source": "guards/plugins/public-app-certification.mjs", "note": "Per-app grace until enforceFrom in canon/public-apps.json; dormant apps warn."},
     {"id": "public-app-launch", "owner": "ci", "mode": "enforce", "source": "scripts/public-app-scan.mjs", "note": "Runs in JovieInc/ci: PRs check every public surface is classified (hermetic); the daily run checks stage public apps have a fresh passing receipt."}
   ]

@@ -1,0 +1,16 @@
+# Lands this repo's own Dependabot patch/minor PRs on green (policy/UPDATE-POLICY.md).
+name: Dependabot Auto-Merge (self)
+on:
+  pull_request:
+    types: [opened, reopened, synchronize, ready_for_review]
+permissions: {}
+jobs:
+  auto-merge:
+    if: github.actor == 'dependabot[bot]'
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: ./.github/workflows/dependabot-auto-merge.yml
+    with:
+      certification_labels: 'dependencies'
+      arm_auto_merge: true
