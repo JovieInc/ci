@@ -1,5 +1,10 @@
 # Canonical Dependabot auto-merge — published in JovieInc/ci (workflow_call).
-# Consumer repos: thin wrapper that `uses:` this file @main.
+# Consumer repos: thin wrapper that `uses:` this file at a full commit SHA.
+# Policy: canon/update-policy.json + policy/UPDATE-POLICY.md.
+#   patch / minor (1.x+)  -> certification labels, and auto-merge armed when
+#                            arm_auto_merge is true; lands only on green checks.
+#   major, or 0.x minor   -> labelled for the agent compatibility lane; never
+#                            armed here and never routed to a human reviewer.
 name: Dependabot Auto-Merge
 
 on:
@@ -14,13 +19,25 @@ on:
         required: false
         type: string
         default: 'merge-queue,tim-approved'
+      arm_auto_merge:
+        description: >-
+          Arm GitHub auto-merge (squash) on safe bumps. For repos without a
+          label-driven queue enroller; required checks still gate the merge.
+        required: false
+        type: boolean
+        default: false
+      compat_label:
+        description: Label that routes majors and 0.x minors to the agent compatibility lane.
+        required: false
+        type: string
+        default: 'compat-check'
 
 permissions: {}
 
 jobs:
   auto-merge:
     if: github.actor == 'dependabot[bot]' && github.event.pull_request.draft == false
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     permissions:
       contents: write
       pull-requests: write
@@ -31,16 +48,32 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Classify bump
+        id: tier
+        env:
+          # Every dependency in the PR, so a grouped PR is only as safe as its riskiest bump.
+          DEPS: ${{ steps.meta.outputs.updated-dependencies-json }}
+        run: |
+          set -euo pipefail
+          # safe: every bump is a patch, or a minor of a 1.x+ package. Anything else
+          # (major, 0.x minor, unknown type) goes to the compatibility lane.
+          tier="$(jq -r '
+            def major: (. // "" | tostring | ltrimstr("v") | split(".")[0]);
+            [ .[] | if .updateType == "version-update:semver-patch" then "safe"
+                    elif .updateType == "version-update:semver-minor" and (.prevVersion | major) != "0" and (.newVersion | major) != "0" then "safe"
+                    else "major" end ]
+            | if length > 0 and all(. == "safe") then "safe" else "major" end' <<<"${DEPS:-[]}")"
+          echo "tier=$tier" >> "$GITHUB_OUTPUT"
+          echo "Dependencies: ${{ steps.meta.outputs.dependency-names }}: $tier"
+
       - name: Certify patch + minor for queue admission
-        if: steps.meta.outputs.update-type == 'version-update:semver-patch' || steps.meta.outputs.update-type == 'version-update:semver-minor'
+        if: steps.tier.outputs.tier == 'safe'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
           CERTIFICATION_LABELS: ${{ inputs.certification_labels }}
         run: |
           set -euo pipefail
-          echo "Dependency: ${{ steps.meta.outputs.dependency-names }}"
-          echo "Update type: ${{ steps.meta.outputs.update-type }}"
           IFS=',' read -ra labels <<<"$CERTIFICATION_LABELS"
           for label in "${labels[@]}"; do
             label="$(echo "$label" | xargs)"
@@ -48,10 +81,20 @@ jobs:
             gh pr edit --add-label "$label" "$PR_URL" || true
           done
 
-      - name: Note major bump requires manual review
-        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+      - name: Arm auto-merge on green
+        if: steps.tier.outputs.tier == 'safe' && inputs.arm_auto_merge
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           PR_URL: ${{ github.event.pull_request.html_url }}
+        run: gh pr merge --auto --squash "$PR_URL"
+
+      - name: Route major to the agent compatibility lane
+        if: steps.tier.outputs.tier == 'major'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          COMPAT_LABEL: ${{ inputs.compat_label }}
         run: |
-          echo "Major bump for ${{ steps.meta.outputs.dependency-names }} — manual review required"
+          gh label create "$COMPAT_LABEL" --color FBCA04 --description "Major update: agent compatibility check, then canary" 2>/dev/null || true
+          gh pr edit --add-label "$COMPAT_LABEL" "$PR_URL" || true
+          echo "Major bump for ${{ steps.meta.outputs.dependency-names }}: routed to the agent compatibility lane (no human review)."

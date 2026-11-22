@@ -1,0 +1,43 @@
+{
+  "schema": "company-update-policy/v1",
+  "note": "One auto-update policy for everything Jovie runs. Prose: policy/UPDATE-POLICY.md. Repo rules are checked in every consumer by guards/plugins/auto-update.mjs (shadow until each consumer is clean). The inventory lists every part of the stack, how it updates today and the guard on it; status gap means it does not yet update itself on this policy. Seeded 2026-11-22 from reads of JovieInc/Jovie, JovieInc/ci, JovieInc/summer-config, Vercel and Supabase.",
+  "tiers": {
+    "patch": { "autoMerge": "on green", "minReleaseAgeDays": 1 },
+    "minor": { "autoMerge": "on green", "minReleaseAgeDays": 3, "note": "A 0.x minor is a breaking release and is handled as a major." },
+    "major": { "autoMerge": "after the compatibility check passes and the canary stays healthy", "minReleaseAgeDays": 7, "owner": "agent compatibility lane, never Tim" },
+    "security": { "autoMerge": "on green", "minReleaseAgeDays": 0, "note": "Security updates skip the release-age wait." }
+  },
+  "repoRules": {
+    "updateConfig": "Each repo has .github/dependabot.yml (or a Renovate config) covering every ecosystem it ships.",
+    "cooldown": "Each npm and pip entry that opens version PRs sets a cooldown (minimum release age).",
+    "actionPins": "Each third-party action is pinned to a full 40-character commit SHA with a version comment.",
+    "autoMergeLane": "Each repo has a workflow that lands Dependabot patch and minor PRs on green.",
+    "holdExpiry": "Each ignore (hold) carries a dated re-evaluate note or a Linear key; a dated hold older than maxHoldAgeDays is drift.",
+    "nodeLts": "The pinned Node major (.nvmrc or .node-version) is the current Active LTS major.",
+    "wranglerCompat": "A Cloudflare Worker's compatibility_date is no older than wranglerMaxAgeDays."
+  },
+  "limits": { "maxHoldAgeDays": 60, "wranglerMaxAgeDays": 120, "nodeActiveLtsMajor": 26 },
+  "inventory": [
+    { "id": "jovie-npm", "what": "JovieInc/Jovie npm dependencies (pnpm workspace)", "updates": "Dependabot weekly, grouped, cooldown 1/3/7 days; merge queue lands green heads", "guard": "full CI + merge queue; dependabot-update-policy holds 0.x minors", "status": "covered" },
+    { "id": "jovie-patched-deps", "what": "Jovie packages pinned by pnpm.patchedDependencies (next, zod, nextra, @better-auth/oauth-provider, @parse/node-apn, @storybook/nextjs-vite, eslint-plugin-react, prebuild-install)", "updates": "none: ignored in Dependabot because a bump orphans the patch", "guard": "manual", "status": "gap", "next": "agent job that re-keys the patch, re-applies it and opens one PR per package" },
+    { "id": "jovie-holds", "what": "Jovie Dependabot holds (vercel CLI 56.3.2, promptfoo <0.122, @biomejs/biome 2.5.15, eve minors, playwright 1.60)", "updates": "held with a re-evaluate note", "guard": "hold-expiry rule in this policy", "status": "gap", "next": "auto-update guard flags dated holds past maxHoldAgeDays" },
+    { "id": "jovie-actions", "what": "Jovie GitHub Actions", "updates": "Dependabot weekly, SHA pinned", "guard": "workflow-runner-pin-check", "status": "covered" },
+    { "id": "jovie-docker", "what": "Jovie Dockerfiles", "updates": "Dependabot weekly", "guard": "CI", "status": "covered" },
+    { "id": "jovie-node", "what": "Node runtime pin for Jovie (.nvmrc, runner image)", "updates": "node-runtime-freshness daily opens a pin PR", "guard": "node-runtime-compatibility; Node 26 promotion waits on a runner image rebuild on Gem", "status": "gap", "next": "rebake the runner image with Node 26 so the pin can move" },
+    { "id": "jovie-web-deploy", "what": "jov.ie on Vercel (project jovie)", "updates": "every main merge ships through production-release", "guard": "canary health gate, staged promote, rollback gates", "status": "covered" },
+    { "id": "jovie-desktop", "what": "Jovie desktop app (Electron, apps/desktop)", "updates": "electron-updater from GitHub release feeds; Electron majors one PR each", "guard": "desktop-release + desktop-dogfood", "status": "covered" },
+    { "id": "summer-npm", "what": "Summer runtime npm dependencies (summer-config apps/summer)", "updates": "Dependabot weekly from 2026-11-22", "guard": "summer-config ci (strict) + company guards; eve gated by canon/dependency-migration-gates.json", "status": "covered" },
+    { "id": "summer-actions", "what": "summer-config GitHub Actions", "updates": "Dependabot weekly from 2026-11-22, SHA pinned", "guard": "auto-update guard", "status": "covered" },
+    { "id": "summer-python", "what": "summer-config Python test tools (requirements-test.txt)", "updates": "Dependabot weekly from 2026-11-22", "guard": "summer-config ci", "status": "covered" },
+    { "id": "summer-workers", "what": "Summer Cloudflare Workers (summer-store, workers-ai-gateway)", "updates": "compatibility_date set by hand", "guard": "wranglerCompat rule", "status": "gap", "next": "agent bumps compatibility_date when the guard flags it" },
+    { "id": "summer-deploy", "what": "Summer on Vercel (project jovie-eve-shadow, summer.jov.ie)", "updates": "Vercel Git integration ships every main merge", "guard": "required checks only, no canary", "status": "gap", "next": "add a post-deploy health probe with automatic rollback" },
+    { "id": "ci-actions", "what": "JovieInc/ci workflows and shared composite actions", "updates": "Dependabot weekly from 2026-11-22, SHA pinned", "guard": "company-guards-self + consumer self-test", "status": "covered" },
+    { "id": "ci-pins", "what": "Consumer pins of JovieInc/ci", "updates": "pin-bump opens and auto-merges a PR per consumer", "guard": "pin-drift guard (72 h)", "status": "covered" },
+    { "id": "vercel-projects", "what": "Other Vercel projects (27 in team_bpNDbti6srVLYPKdmQLu4UgT, most idle)", "updates": "none", "guard": "resource-drift-scan registry", "status": "gap", "next": "archive idle projects or give each a repo with this policy" },
+    { "id": "supabase-gbrain", "what": "GBrain Supabase project (Postgres 17, read only for agents)", "updates": "Supabase-managed minor patches", "guard": "vendor", "status": "covered" },
+    { "id": "gem-host", "what": "Gem Linux box (runner image, Symphony service)", "updates": "unknown from here", "guard": "none recorded", "status": "gap", "next": "unattended security upgrades plus a weekly host receipt" },
+    { "id": "agent-fleet", "what": "Codex agents (Chloe, Lola, Aeon), Symphony, MCP servers, CLIs", "updates": "unknown from here; tooling registry lists them", "guard": "scripts/tooling-drift.mjs (registry only, no versions)", "status": "gap", "next": "record each agent's runtime version and pin source in canon/tooling.json" },
+    { "id": "ai-models", "what": "Model pins (Opus 5.5 default orchestrator, Fable for important work, Codex for cheap implementation)", "updates": "set by policy", "guard": "workers-ai-gateway deprecated-models.json", "status": "gap", "next": "deprecation check that files a Linear issue when a pinned model gets a retirement date" },
+    { "id": "vendor-firecrawl", "what": "Firecrawl API", "updates": "old API switch due before 2026-12-10", "guard": "none", "status": "gap", "next": "migrate before the deadline" }
+  ]
+}
