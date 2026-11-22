@@ -1,6 +1,6 @@
 {
  "schema": "company-tooling-registry/v1",
- "note": "Single canonical list of skills, plugins, MCP servers, CLIs, hooks and workers. Pattern follows canon/resources.json. costTokens is an estimate (bytes/4) of always-loaded context. status: active | candidate-slim | proposed-removal | retired. Seeded 2026-10-29 from Tim machine + Jovie repo audit; proposed-removal means Tim has not yet approved. Drift check: node scripts/tooling-drift.mjs check|scan.",
+ "note": "Single canonical list of skills, plugins, MCP servers, CLIs, hooks and workers. Pattern follows canon/resources.json. costTokens is an estimate (bytes/4) of always-loaded context. status: active | candidate-slim | proposed-removal | retired. Seeded 2026-10-29 from Tim machine + Jovie repo audit; proposed-removal means Tim has not yet approved. Drift check: node scripts/tooling-drift.mjs check|scan|versions. Runtime declarations are repository evidence. Null means the source has not been verified.",
  "entries": [
   {
    "id": "skill:_gstack-command",
@@ -1650,7 +1650,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:ruflo",
@@ -1661,7 +1662,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "candidate-slim",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:pencil",
@@ -1672,7 +1674,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:statsig",
@@ -1683,7 +1686,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "proposed-removal",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:stitch",
@@ -1694,7 +1698,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "proposed-removal",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:Neon",
@@ -1705,7 +1710,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "proposed-removal",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:jovie-research",
@@ -1716,7 +1722,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "~/.claude.json"
+   "source": "~/.claude.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Claude_Docs",
@@ -1727,7 +1734,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Linear",
@@ -1738,7 +1746,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude-in-chrome",
@@ -1749,7 +1758,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Sentry",
@@ -1760,7 +1770,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Gmail",
@@ -1771,7 +1782,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Google_Calendar",
@@ -1782,7 +1794,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Google_Drive",
@@ -1793,7 +1806,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "candidate-slim",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Figma",
@@ -1804,7 +1818,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:claude_ai_Typefully",
@@ -1815,7 +1830,8 @@
    "owner": "Tim",
    "costTokens": 60,
    "status": "active",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "mcp:plugin-connector-stubs",
@@ -1826,7 +1842,8 @@
    "owner": "Tim",
    "costTokens": 1000,
    "status": "proposed-removal",
-   "source": "claude.ai"
+   "source": "claude.ai",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "hook:session-start-gbrain",
@@ -1925,7 +1942,8 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "PATH"
+   "source": "PATH",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "cli:jovie-research",
@@ -1936,7 +1954,8 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "PATH"
+   "source": "PATH",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "cli:gh",
@@ -1947,7 +1966,8 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "PATH"
+   "source": "PATH",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "cli:doppler",
@@ -1958,7 +1978,8 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "PATH"
+   "source": "PATH",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "cli:vercel",
@@ -1969,7 +1990,8 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "PATH"
+   "source": "PATH",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "worker:summer",
@@ -1980,7 +2002,8 @@
    "owner": "Summer",
    "costTokens": 0,
    "status": "active",
-   "source": "see canon/resources.json"
+   "source": "see canon/resources.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": "summer-config main release"}
   },
   {
    "id": "worker:hermes-ship-loop",
@@ -1991,18 +2014,53 @@
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "see canon/resources.json"
+   "source": "see canon/resources.json",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
   },
   {
    "id": "worker:resource-drift-scan",
    "kind": "worker",
    "name": "resource-drift-scan",
-   "purpose": "Weekly canon/resources.json drift workflow in JovieInc/ci",
+   "purpose": "Daily canon/resources.json drift workflow in JovieInc/ci",
    "whenToUse": "Automatic",
    "owner": "Tim",
    "costTokens": 0,
    "status": "active",
-   "source": "see canon/resources.json"
+   "source": "see canon/resources.json",
+   "runtime": {"declaredVersion": null, "pinSource": "JovieInc/ci .github/workflows/resource-drift-scan.yml", "updateChannel": "daily GitHub Actions from main"}
+  },
+  {
+   "id": "cli:codex",
+   "kind": "cli",
+   "name": "codex",
+   "purpose": "Codex CLI used by Symphony code lanes",
+   "whenToUse": "See the documented runtime source.",
+   "owner": "gem-lanes",
+   "status": "active",
+   "source": "JovieInc/Jovie scripts/lanes/README.md",
+   "runtime": {"declaredVersion": null, "pinSource": null, "updateChannel": null}
+  },
+  {
+   "id": "worker:symphony",
+   "kind": "worker",
+   "name": "symphony",
+   "purpose": "Fleet shipping harness",
+   "whenToUse": "See the documented runtime source.",
+   "owner": "gem-lanes",
+   "status": "active",
+   "source": "JovieInc/Jovie scripts/lanes/README.md",
+   "runtime": {"declaredVersion": null, "pinSource": "JovieInc/Jovie scripts/lanes/README.md", "updateChannel": "verified commit bundle on the existing Symphony minute clock"}
+  },
+  {
+   "id": "worker:eve",
+   "kind": "worker",
+   "name": "eve",
+   "purpose": "Agent runtime dependency used by Summer",
+   "whenToUse": "See the documented runtime source.",
+   "owner": "Summer",
+   "status": "active",
+   "source": "JovieInc/summer-config apps/summer/package.json",
+   "runtime": {"declaredVersion": "0.47.7", "pinSource": "JovieInc/summer-config apps/summer/package.json", "updateChannel": "exact npm dependency through summer-config CI"}
   }
  ]
 }
