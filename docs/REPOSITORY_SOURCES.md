@@ -15,7 +15,7 @@ Repository: `JovieInc/ci`
 
 A changed fingerprint requires review of its related documentation; it does not prove prose is accurate.
 
-- `.github/workflows/dependabot-auto-merge.yml` — Local manifest or workflow; review related instructions when changed (SHA-256 `bc64e6bafb2e66083594eb41b869f4470fa5fb48fe9b0bfa9988545fc339c705`)
+- `.github/workflows/dependabot-auto-merge.yml` — Local manifest or workflow; review related instructions when changed (SHA-256 `9e7e2b2595cd55115015d5dd266cd9adb29acfee435175b55ab25a0ab95b1a76`)
 - `.github/workflows/documentation-tool.yml` — Local manifest or workflow; review related instructions when changed (SHA-256 `8c41e2824c123ee470cb07266f1f54a2fb18d736ab8902d4169682862dc863c1`)
 - `.github/workflows/repository-docs-shadow.yml` — Nonblocking parity qualification (SHA-256 `a4491b59c10299209611b8d806fb51c0daae0440377508e1da1b30498229f138`)
 
