@@ -65,7 +65,9 @@ export function holdFindings(text, { now, maxAgeDays }) {
     let linear = false;
     for (let j = i; j >= Math.max(0, i - 40); j--) {
       const l = lines[j];
-      if (j < i && /^\s*(ignore:|-\s*package-ecosystem:)/.test(l)) break;
+      // Stop at the list start, the entry's ecosystem or the previous hold, so a
+      // hold never borrows another hold's note.
+      if (j < i && /^\s*(ignore:|-\s*package-ecosystem:|-\s*dependency-name:)/.test(l)) break;
       if (!/#/.test(l)) continue;
       const comment = l.slice(l.indexOf('#'));
       if (/\bJOV-\d+\b|linear\.app\//.test(comment)) linear = true;

@@ -51,6 +51,11 @@ test('holds need a date or Linear key, and dated holds expire', () => {
   assert.match(f[1], /y has no dated re-evaluate note/);
 });
 
+test('a hold never borrows the note of the hold above it', () => {
+  const text = "ignore:\n  # Held 2026-11-01: upstream bug.\n  - dependency-name: 'x'\n  - dependency-name: 'y'\n";
+  assert.deepEqual(holdFindings(text, { now: NOW, maxAgeDays: 60 }), ['hold on y has no dated re-evaluate note or Linear key']);
+});
+
 test('unpinnedActions flags tags and skips local, docker and placeholders', () => {
   const text = `steps:\n  - uses: actions/checkout@v7\n  - uses: a/b@${SHA}\n  - uses: ./x\n  - uses: docker://alpine:3\n  - uses: o/r/.github/workflows/w.yml@<sha>\n`;
   assert.deepEqual(unpinnedActions('w.yml', text), ['w.yml: actions/checkout@v7 is not pinned to a full commit SHA']);
