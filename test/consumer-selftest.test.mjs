@@ -165,3 +165,11 @@ test('parsePin reads Jovie\'s comment pin form', async () => {
   const sha = '6b3f0077d9d0ad0b2d9547c5848e006084f94056';
   assert.equal(parsePin(`# Shared suite\n# ci-ref: ${sha}\n  run: sha=$(sed -n 's/^# ci-ref: x/p')\n`), sha);
 });
+
+test('a consumer without Company guards wiring is reported, not failed', async () => {
+  const { selftest } = await import('../scripts/consumer-selftest.mjs');
+  const result = await selftest({ repos: ['symphony'], clone: (_repo, dir) => mkdirSync(dir, { recursive: true }),
+    runGuards: () => { throw new Error('must not run guards for an unwired consumer'); } });
+  assert.equal(result.exitCode, 0);
+  assert.equal(result.reports[0].notWired, true);
+});
