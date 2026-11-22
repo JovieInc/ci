@@ -133,13 +133,37 @@ for (const target of [null, 'AGENTS.md', 'missing.md', 'CLAUDE.md']) {
     if (!valid) assert.match(result.stderr, /CLAUDE.md must be a symlink to AGENTS.md/);
   });
 }
-import { validate as validateTooling, diff as diffTooling } from '../scripts/tooling-drift.mjs';
+import { validate as validateTooling, diff as diffTooling, versionReport } from '../scripts/tooling-drift.mjs';
 const tooling = JSON.parse(readFileSync(new URL('../canon/tooling.json', import.meta.url)));
 test('tooling: registry valid; drift flags unregistered and missing', () => {
   assert.deepEqual(validateTooling(tooling), []);
   const e = tooling.entries.find((x) => x.kind === 'mcp' && x.status === 'active');
   assert.deepEqual(diffTooling(tooling, { mcp: ['brand-new'] }).unregistered, ['mcp:brand-new']);
   assert.ok(diffTooling(tooling, { mcp: [] }).missing.includes(e.id));
+});
+
+test('tooling: version drift requires post-cooldown runtime evidence and classifies tier', () => {
+  const policy = JSON.parse(readFileSync(new URL('../canon/update-policy.json', import.meta.url)));
+  const id = 'worker:eve';
+  const registry = { entries: tooling.entries.filter(entry => entry.id === id) };
+  const latest = { version: '0.48.0', releasedDate: '2026-11-10', security: false };
+  const upstream = { [id]: latest };
+  const now = new Date('2026-11-20T12:00:00Z');
+  const readback = (version, observedDate) => ({ [id]: { version, observedDate } });
+  const report = (observations, releases = upstream, at = now) =>
+    versionReport(registry, observations, releases, policy, at)[0];
+  assert.equal(report({}).status, 'unverified-readback');
+  assert.equal(report({}).observedVersion, null);
+  assert.equal(report({}).declaredVersion, registry.entries[0].runtime.declaredVersion);
+  assert.equal(report(readback('0.47.7', '2026-11-20'), {}).status, 'unverified-upstream');
+  assert.equal(report(readback('0.47.7', '2026-11-12'), upstream, new Date('2026-11-12')).status, 'cooldown');
+  assert.equal(report(readback('0.47.7', '2026-11-12')).status, 'readback-before-eligibility');
+  assert.equal(report(readback('0.47.7', '2026-11-20')).status, 'drift');
+  assert.equal(report(readback('0.47.7', '2026-11-20')).tier, 'major');
+  assert.equal(report(readback('0.48.0', '2026-11-20')).status, 'current');
+  assert.equal(report(readback('0.49.0', '2026-11-20')).status, 'ahead-of-source');
+  assert.equal(report(readback('0.47.7', '2026-11-10'), { [id]: { ...latest, security: true } }, new Date('2026-11-10')).status, 'drift');
+  assert.equal(report(readback('0.47.7', '2026-11-31')).status, 'unverified-readback');
 });
 
 import { inventory } from '../scripts/tooling-drift.mjs';

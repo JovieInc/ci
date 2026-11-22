@@ -3,6 +3,7 @@
 //   check                      validate registry shape (CI, runs everywhere)
 //   inventory [--home DIR]     print installed inventory JSON from a machine (skills, plugins, mcp, hooks)
 //   scan --inventory FILE      fail on installed-but-unregistered or registered-but-missing (non-retired)
+//   versions --readback FILE --upstream FILE  compare version receipts offline
 import { readFileSync, readdirSync, existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
@@ -14,6 +15,54 @@ const STATUS = ['active', 'candidate-slim', 'proposed-removal', 'retired'];
 const REQUIRED = ['id', 'kind', 'name', 'purpose', 'whenToUse', 'owner', 'status'];
 // A machine scan only covers entries whose source is a ~/ path; repo, claude.ai, cli and worker entries are registry-only.
 const SCANNED = ['skill', 'plugin', 'mcp', 'hook'];
+const VERSIONED = ['cli', 'mcp', 'worker'];
+const RUNTIME_FIELDS = ['declaredVersion', 'pinSource', 'updateChannel'];
+const DAY_MS = 86_400_000;
+
+function versionParts(version) {
+  if (typeof version !== 'string' || !/^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/.test(version)) return null;
+  const parts = version.replace(/^v/, '').split('.').map(Number);
+  return parts.every(Number.isSafeInteger) ? parts : null;
+}
+
+function utcDate(value) {
+  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return NaN;
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && new Date(timestamp).toISOString().slice(0, 10) === value ? timestamp : NaN;
+}
+
+export function versionReport(reg, readback, upstream, policy, now = new Date()) {
+  return reg.entries.filter(e => VERSIONED.includes(e.kind) && e.status !== 'retired').map(e => {
+    const { declaredVersion, pinSource, updateChannel } = e.runtime;
+    const installed = readback[e.id];
+    const observed = versionParts(installed?.version);
+    const observedAt = utcDate(installed?.observedDate);
+    const release = upstream[e.id];
+    const latest = versionParts(release?.version);
+    const releasedAt = utcDate(release?.releasedDate);
+    const observedValid = observed && observedAt <= now.getTime();
+    const upstreamValid = latest && releasedAt <= now.getTime() && typeof release.security === 'boolean';
+    const result = {
+      id: e.id, declaredVersion, pinSource, updateChannel,
+      observedVersion: observedValid ? installed.version : null,
+      observedDate: observedValid ? installed.observedDate : null,
+      upstreamVersion: upstreamValid ? release.version : null,
+    };
+    if (!observedValid) return { ...result, status: 'unverified-readback' };
+    if (!upstreamValid) return { ...result, status: 'unverified-upstream' };
+    const firstDifference = latest.findIndex((part, index) => part !== observed[index]);
+    if (firstDifference === -1) return { ...result, status: 'current' };
+    if (latest[firstDifference] < observed[firstDifference]) return { ...result, status: 'ahead-of-source' };
+    const breaking = firstDifference === 0 || (firstDifference === 1 && observed[0] === 0);
+    let tier = firstDifference === 1 ? 'minor' : 'patch';
+    if (breaking) tier = 'major';
+    if (release.security) tier = 'security';
+    const eligibleAt = releasedAt + policy.tiers[tier].minReleaseAgeDays * DAY_MS;
+    if (now.getTime() < eligibleAt) return { ...result, status: 'cooldown', tier };
+    if (observedAt < eligibleAt) return { ...result, status: 'readback-before-eligibility', tier };
+    return { ...result, status: 'drift', tier };
+  });
+}
 
 export function validate(reg) {
   const errs = [];
@@ -23,6 +72,10 @@ export function validate(reg) {
     if (!KINDS.includes(e.kind)) errs.push(`${e.id}: bad kind ${e.kind}`);
     if (!STATUS.includes(e.status)) errs.push(`${e.id}: bad status ${e.status}`);
     if (e.id !== `${e.kind}:${e.name}`) errs.push(`${e.id}: id must be kind:name`);
+    if (VERSIONED.includes(e.kind) && RUNTIME_FIELDS.some(field => {
+      const value = e.runtime?.[field];
+      return value !== null && (typeof value !== 'string' || !value.trim());
+    })) errs.push(`${e.id}: runtime must declare version, pin source and update channel (null when unknown)`);
     if (ids.has(e.id)) errs.push(`${e.id}: duplicate`);
     ids.add(e.id);
   }
@@ -70,6 +123,22 @@ function main(argv) {
     const errs = validate(reg);
     if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
     console.log(`ok: ${reg.entries.length} entries`);
+  } else if (argv[0] === 'versions') {
+    const errs = validate(reg);
+    if (errs.length) { console.error(errs.join('\n')); process.exit(1); }
+    const read = flag => {
+      const path = get(flag);
+      if (!path) throw new Error(`Missing ${flag} FILE`);
+      const receipt = JSON.parse(readFileSync(path, 'utf8'));
+      if (!receipt || typeof receipt !== 'object' || Array.isArray(receipt)) {
+        throw new Error(`Expected a JSON object for ${flag}`);
+      }
+      return receipt;
+    };
+    const policy = JSON.parse(readFileSync(join(HERE, '..', 'canon', 'update-policy.json'), 'utf8'));
+    const rows = versionReport(reg, read('--readback'), read('--upstream'), policy);
+    console.log(JSON.stringify(rows, null, 2));
+    if (rows.some(row => row.status === 'drift')) process.exitCode = 1;
   } else if (argv[0] === 'inventory') {
     console.log(JSON.stringify(inventory(get('--home') || process.env.HOME), null, 1));
   } else if (argv[0] === 'scan') {
@@ -78,6 +147,6 @@ function main(argv) {
     for (const m of d.missing) console.error(`registered but not installed (retire or fix): ${m}`);
     if (d.unregistered.length || d.missing.length) process.exit(1);
     console.log('ok: installed matches registry');
-  } else { console.error('usage: tooling-drift.mjs check|inventory|scan'); process.exit(2); }
+  } else { console.error('usage: tooling-drift.mjs check|inventory|scan|versions'); process.exit(2); }
 }
 if (process.argv[1] === fileURLToPath(import.meta.url)) main(process.argv.slice(2));
